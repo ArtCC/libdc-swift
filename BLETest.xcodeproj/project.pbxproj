@@ -7,18 +7,149 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2946CBD12C37AE7A00F07865 /* CrcSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 2946CBD02C37AE7A00F07865 /* CrcSwift */; };
+		297732082C38042C00880C9F /* aes.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731522C38042B00880C9F /* aes.c */; };
+		297732092C38042C00880C9F /* array.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731542C38042B00880C9F /* array.c */; };
+		2977320C2C38042C00880C9F /* bluetooth.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731592C38042B00880C9F /* bluetooth.c */; };
+		2977320D2C38042C00880C9F /* buffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 2977315A2C38042B00880C9F /* buffer.c */; };
+		2977320E2C38042C00880C9F /* checksum.c in Sources */ = {isa = PBXBuildFile; fileRef = 2977315B2C38042B00880C9F /* checksum.c */; };
+		297732132C38042C00880C9F /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731642C38042B00880C9F /* common.c */; };
+		297732142C38042C00880C9F /* context.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731662C38042B00880C9F /* context.c */; };
+		2977321B2C38042C00880C9F /* custom.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731702C38042B00880C9F /* custom.c */; };
+		2977321C2C38042C00880C9F /* datetime.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731712C38042B00880C9F /* datetime.c */; };
+		297732212C38042D00880C9F /* descriptor.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731792C38042B00880C9F /* descriptor.c */; };
+		297732222C38042D00880C9F /* device.c in Sources */ = {isa = PBXBuildFile; fileRef = 2977317B2C38042B00880C9F /* device.c */; };
+		297732292C38042D00880C9F /* hdlc.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731852C38042B00880C9F /* hdlc.c */; };
+		2977322E2C38042D00880C9F /* ihex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2977318E2C38042B00880C9F /* ihex.c */; };
+		2977322F2C38042D00880C9F /* iostream.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731912C38042B00880C9F /* iostream.c */; };
+		297732312C38042D00880C9F /* iterator.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731942C38042B00880C9F /* iterator.c */; };
+		297732322C38042D00880C9F /* libdivecomputer.rc in Resources */ = {isa = PBXBuildFile; fileRef = 297731952C38042B00880C9F /* libdivecomputer.rc */; };
+		297732332C38042D00880C9F /* libdivecomputer.symbols in Resources */ = {isa = PBXBuildFile; fileRef = 297731962C38042B00880C9F /* libdivecomputer.symbols */; };
+		2977324C2C38042D00880C9F /* packet.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731BC2C38042B00880C9F /* packet.c */; };
+		2977324D2C38042D00880C9F /* parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731BF2C38042B00880C9F /* parser.c */; };
+		2977324E2C38042D00880C9F /* platform.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731C02C38042B00880C9F /* platform.c */; };
+		2977324F2C38042D00880C9F /* rbstream.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731C22C38042B00880C9F /* rbstream.c */; };
+		297732562C38042D00880C9F /* ringbuffer.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731CD2C38042B00880C9F /* ringbuffer.c */; };
+		297732592C38042D00880C9F /* serial_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731D22C38042B00880C9F /* serial_posix.c */; };
+		2977325F2C38042D00880C9F /* socket.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731DB2C38042B00880C9F /* socket.c */; };
+		297732622C38042D00880C9F /* suunto_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731E02C38042B00880C9F /* suunto_common.c */; };
+		297732632C38042D00880C9F /* suunto_common2.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731E22C38042B00880C9F /* suunto_common2.c */; };
+		297732662C38042D00880C9F /* suunto_eon_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731E72C38042B00880C9F /* suunto_eon_parser.c */; };
+		297732672C38042D00880C9F /* suunto_eon.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731E82C38042B00880C9F /* suunto_eon.c */; };
+		297732682C38042D00880C9F /* suunto_eonsteel_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731EA2C38042B00880C9F /* suunto_eonsteel_parser.c */; };
+		297732692C38042D00880C9F /* suunto_eonsteel.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731EB2C38042B00880C9F /* suunto_eonsteel.c */; };
+		2977326A2C38042D00880C9F /* suunto_solution_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731ED2C38042B00880C9F /* suunto_solution_parser.c */; };
+		2977326B2C38042D00880C9F /* suunto_solution.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731EE2C38042B00880C9F /* suunto_solution.c */; };
+		297732712C38042D00880C9F /* timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 297731F82C38042B00880C9F /* timer.c */; };
+		297732792C38042D00880C9F /* version.c in Sources */ = {isa = PBXBuildFile; fileRef = 297732042C38042B00880C9F /* version.c */; };
+		297732A72C381BA200880C9F /* version.h.in in Resources */ = {isa = PBXBuildFile; fileRef = 297732A02C381BA200880C9F /* version.h.in */; };
 		29ABFDBD2C36C72B0094DF48 /* BLETestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29ABFDBC2C36C72B0094DF48 /* BLETestApp.swift */; };
-		29ABFDBF2C36C72B0094DF48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29ABFDBE2C36C72B0094DF48 /* ContentView.swift */; };
 		29ABFDC12C36C7300094DF48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29ABFDC02C36C7300094DF48 /* Assets.xcassets */; };
 		29ABFDC42C36C7300094DF48 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29ABFDC32C36C7300094DF48 /* Preview Assets.xcassets */; };
+		29ABFDCC2C36C75E0094DF48 /* BluetoothScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29ABFDCB2C36C75E0094DF48 /* BluetoothScanView.swift */; };
+		29ABFDCE2C36C7880094DF48 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29ABFDCD2C36C7880094DF48 /* BLEManager.swift */; };
+		29E3ED5B2C3A91DA00A14A5A /* configuredc.c in Sources */ = {isa = PBXBuildFile; fileRef = 29E3ED5A2C3A91D900A14A5A /* configuredc.c */; };
+		29E6CA952C575FB700523751 /* BLEBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 29E6CA942C575FB700523751 /* BLEBridge.m */; };
+		29E996BA2C57CE4A00BB9070 /* DeviceConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E996B92C57CE4A00BB9070 /* DeviceConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2946CBCC2C36C95D00F07865 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		297731522C38042B00880C9F /* aes.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = aes.c; sourceTree = "<group>"; };
+		297731532C38042B00880C9F /* aes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes.h; sourceTree = "<group>"; };
+		297731542C38042B00880C9F /* array.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = array.c; sourceTree = "<group>"; };
+		297731552C38042B00880C9F /* array.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = array.h; sourceTree = "<group>"; };
+		297731592C38042B00880C9F /* bluetooth.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = bluetooth.c; sourceTree = "<group>"; };
+		2977315A2C38042B00880C9F /* buffer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = buffer.c; sourceTree = "<group>"; };
+		2977315B2C38042B00880C9F /* checksum.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = checksum.c; sourceTree = "<group>"; };
+		2977315C2C38042B00880C9F /* checksum.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = checksum.h; sourceTree = "<group>"; };
+		297731632C38042B00880C9F /* common-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "common-private.h"; sourceTree = "<group>"; };
+		297731642C38042B00880C9F /* common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = common.c; sourceTree = "<group>"; };
+		297731652C38042B00880C9F /* context-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "context-private.h"; sourceTree = "<group>"; };
+		297731662C38042B00880C9F /* context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = context.c; sourceTree = "<group>"; };
+		297731702C38042B00880C9F /* custom.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = custom.c; sourceTree = "<group>"; };
+		297731712C38042B00880C9F /* datetime.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = datetime.c; sourceTree = "<group>"; };
+		297731782C38042B00880C9F /* descriptor-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "descriptor-private.h"; sourceTree = "<group>"; };
+		297731792C38042B00880C9F /* descriptor.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = descriptor.c; sourceTree = "<group>"; };
+		2977317A2C38042B00880C9F /* device-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "device-private.h"; sourceTree = "<group>"; };
+		2977317B2C38042B00880C9F /* device.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = device.c; sourceTree = "<group>"; };
+		297731852C38042B00880C9F /* hdlc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = hdlc.c; sourceTree = "<group>"; };
+		297731862C38042B00880C9F /* hdlc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hdlc.h; sourceTree = "<group>"; };
+		2977318E2C38042B00880C9F /* ihex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ihex.c; sourceTree = "<group>"; };
+		2977318F2C38042B00880C9F /* ihex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ihex.h; sourceTree = "<group>"; };
+		297731902C38042B00880C9F /* iostream-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "iostream-private.h"; sourceTree = "<group>"; };
+		297731912C38042B00880C9F /* iostream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = iostream.c; sourceTree = "<group>"; };
+		297731932C38042B00880C9F /* iterator-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "iterator-private.h"; sourceTree = "<group>"; };
+		297731942C38042B00880C9F /* iterator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = iterator.c; sourceTree = "<group>"; };
+		297731952C38042B00880C9F /* libdivecomputer.rc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libdivecomputer.rc; sourceTree = "<group>"; };
+		297731962C38042B00880C9F /* libdivecomputer.symbols */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libdivecomputer.symbols; sourceTree = "<group>"; };
+		2977319A2C38042B00880C9F /* Makefile.am */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		2977319B2C38042B00880C9F /* Makefile.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		297731BC2C38042B00880C9F /* packet.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = packet.c; sourceTree = "<group>"; };
+		297731BD2C38042B00880C9F /* packet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = packet.h; sourceTree = "<group>"; };
+		297731BE2C38042B00880C9F /* parser-private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "parser-private.h"; sourceTree = "<group>"; };
+		297731BF2C38042B00880C9F /* parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = parser.c; sourceTree = "<group>"; };
+		297731C02C38042B00880C9F /* platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = platform.c; sourceTree = "<group>"; };
+		297731C12C38042B00880C9F /* platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
+		297731C22C38042B00880C9F /* rbstream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rbstream.c; sourceTree = "<group>"; };
+		297731C32C38042B00880C9F /* rbstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rbstream.h; sourceTree = "<group>"; };
+		297731CD2C38042B00880C9F /* ringbuffer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ringbuffer.c; sourceTree = "<group>"; };
+		297731CE2C38042B00880C9F /* ringbuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ringbuffer.h; sourceTree = "<group>"; };
+		297731D22C38042B00880C9F /* serial_posix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = serial_posix.c; sourceTree = "<group>"; };
+		297731DB2C38042B00880C9F /* socket.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = socket.c; sourceTree = "<group>"; };
+		297731DC2C38042B00880C9F /* socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = socket.h; sourceTree = "<group>"; };
+		297731E02C38042B00880C9F /* suunto_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_common.c; sourceTree = "<group>"; };
+		297731E12C38042B00880C9F /* suunto_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_common.h; sourceTree = "<group>"; };
+		297731E22C38042B00880C9F /* suunto_common2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_common2.c; sourceTree = "<group>"; };
+		297731E32C38042B00880C9F /* suunto_common2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_common2.h; sourceTree = "<group>"; };
+		297731E72C38042B00880C9F /* suunto_eon_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_eon_parser.c; sourceTree = "<group>"; };
+		297731E82C38042B00880C9F /* suunto_eon.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_eon.c; sourceTree = "<group>"; };
+		297731E92C38042B00880C9F /* suunto_eon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_eon.h; sourceTree = "<group>"; };
+		297731EA2C38042B00880C9F /* suunto_eonsteel_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_eonsteel_parser.c; sourceTree = "<group>"; };
+		297731EB2C38042B00880C9F /* suunto_eonsteel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_eonsteel.c; sourceTree = "<group>"; };
+		297731EC2C38042B00880C9F /* suunto_eonsteel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_eonsteel.h; sourceTree = "<group>"; };
+		297731ED2C38042B00880C9F /* suunto_solution_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_solution_parser.c; sourceTree = "<group>"; };
+		297731EE2C38042B00880C9F /* suunto_solution.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = suunto_solution.c; sourceTree = "<group>"; };
+		297731EF2C38042B00880C9F /* suunto_solution.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_solution.h; sourceTree = "<group>"; };
+		297731F82C38042B00880C9F /* timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = timer.c; sourceTree = "<group>"; };
+		297731F92C38042B00880C9F /* timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = timer.h; sourceTree = "<group>"; };
+		297732042C38042B00880C9F /* version.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = version.c; sourceTree = "<group>"; };
+		2977327C2C38053500880C9F /* BLETest-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BLETest-Bridging-Header.h"; sourceTree = "<group>"; };
+		2977327E2C381BA200880C9F /* ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ble.h; sourceTree = "<group>"; };
+		2977327F2C381BA200880C9F /* bluetooth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bluetooth.h; sourceTree = "<group>"; };
+		297732802C381BA200880C9F /* buffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = buffer.h; sourceTree = "<group>"; };
+		297732812C381BA200880C9F /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
+		297732822C381BA200880C9F /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = context.h; sourceTree = "<group>"; };
+		297732832C381BA200880C9F /* custom.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = custom.h; sourceTree = "<group>"; };
+		297732842C381BA200880C9F /* datetime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = datetime.h; sourceTree = "<group>"; };
+		297732852C381BA200880C9F /* descriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = descriptor.h; sourceTree = "<group>"; };
+		297732862C381BA200880C9F /* device.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = device.h; sourceTree = "<group>"; };
+		2977328B2C381BA200880C9F /* ioctl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ioctl.h; sourceTree = "<group>"; };
+		2977328C2C381BA200880C9F /* iostream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iostream.h; sourceTree = "<group>"; };
+		2977328E2C381BA200880C9F /* iterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iterator.h; sourceTree = "<group>"; };
+		2977328F2C381BA200880C9F /* Makefile.am */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		297732902C381BA200880C9F /* Makefile.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		297732942C381BA200880C9F /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parser.h; sourceTree = "<group>"; };
+		297732982C381BA200880C9F /* serial.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = serial.h; sourceTree = "<group>"; };
+		2977329A2C381BA200880C9F /* suunto_eon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = suunto_eon.h; sourceTree = "<group>"; };
+		2977329C2C381BA200880C9F /* units.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = units.h; sourceTree = "<group>"; };
+		2977329F2C381BA200880C9F /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = version.h; sourceTree = "<group>"; };
+		297732A02C381BA200880C9F /* version.h.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = version.h.in; sourceTree = "<group>"; };
+		297732A22C381BA200880C9F /* Makefile.am */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		297732A32C381BA200880C9F /* Makefile.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
 		29ABFDB92C36C72B0094DF48 /* BLETest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BLETest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29ABFDBC2C36C72B0094DF48 /* BLETestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLETestApp.swift; sourceTree = "<group>"; };
-		29ABFDBE2C36C72B0094DF48 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		29ABFDC02C36C7300094DF48 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		29ABFDC32C36C7300094DF48 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		29ABFDCB2C36C75E0094DF48 /* BluetoothScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothScanView.swift; sourceTree = "<group>"; };
+		29ABFDCD2C36C7880094DF48 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		29E3ED592C3A91D900A14A5A /* configuredc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = configuredc.h; sourceTree = "<group>"; };
+		29E3ED5A2C3A91D900A14A5A /* configuredc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = configuredc.c; sourceTree = "<group>"; };
+		29E6CA932C575F8300523751 /* BLEBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BLEBridge.h; sourceTree = "<group>"; };
+		29E6CA942C575FB700523751 /* BLEBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BLEBridge.m; sourceTree = "<group>"; };
+		29E996B92C57CE4A00BB9070 /* DeviceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConfiguration.swift; sourceTree = "<group>"; };
+		29F579B52C39433500532B0F /* ssrf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ssrf.h; sourceTree = "<group>"; };
+		29F579B62C39436B00532B0F /* gettext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gettext.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -26,12 +157,129 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2946CBD12C37AE7A00F07865 /* CrcSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		297731512C3803BF00880C9F /* libdivecomputer */ = {
+			isa = PBXGroup;
+			children = (
+				297732A42C381BA200880C9F /* include */,
+				297732072C38042B00880C9F /* src */,
+			);
+			path = libdivecomputer;
+			sourceTree = "<group>";
+		};
+		297732072C38042B00880C9F /* src */ = {
+			isa = PBXGroup;
+			children = (
+				297731EC2C38042B00880C9F /* suunto_eonsteel.h */,
+				297731EB2C38042B00880C9F /* suunto_eonsteel.c */,
+				297731522C38042B00880C9F /* aes.c */,
+				297731532C38042B00880C9F /* aes.h */,
+				297731542C38042B00880C9F /* array.c */,
+				297731552C38042B00880C9F /* array.h */,
+				297731592C38042B00880C9F /* bluetooth.c */,
+				2977315A2C38042B00880C9F /* buffer.c */,
+				2977315B2C38042B00880C9F /* checksum.c */,
+				2977315C2C38042B00880C9F /* checksum.h */,
+				297731632C38042B00880C9F /* common-private.h */,
+				297731642C38042B00880C9F /* common.c */,
+				297731652C38042B00880C9F /* context-private.h */,
+				297731662C38042B00880C9F /* context.c */,
+				297731702C38042B00880C9F /* custom.c */,
+				297731712C38042B00880C9F /* datetime.c */,
+				297731782C38042B00880C9F /* descriptor-private.h */,
+				297731792C38042B00880C9F /* descriptor.c */,
+				2977317A2C38042B00880C9F /* device-private.h */,
+				2977317B2C38042B00880C9F /* device.c */,
+				297731852C38042B00880C9F /* hdlc.c */,
+				297731862C38042B00880C9F /* hdlc.h */,
+				2977318E2C38042B00880C9F /* ihex.c */,
+				2977318F2C38042B00880C9F /* ihex.h */,
+				297731902C38042B00880C9F /* iostream-private.h */,
+				297731912C38042B00880C9F /* iostream.c */,
+				297731932C38042B00880C9F /* iterator-private.h */,
+				297731942C38042B00880C9F /* iterator.c */,
+				297731952C38042B00880C9F /* libdivecomputer.rc */,
+				297731962C38042B00880C9F /* libdivecomputer.symbols */,
+				2977319A2C38042B00880C9F /* Makefile.am */,
+				2977319B2C38042B00880C9F /* Makefile.in */,
+				297731BC2C38042B00880C9F /* packet.c */,
+				297731BD2C38042B00880C9F /* packet.h */,
+				297731BE2C38042B00880C9F /* parser-private.h */,
+				297731BF2C38042B00880C9F /* parser.c */,
+				297731C02C38042B00880C9F /* platform.c */,
+				297731C12C38042B00880C9F /* platform.h */,
+				297731C22C38042B00880C9F /* rbstream.c */,
+				297731C32C38042B00880C9F /* rbstream.h */,
+				297731CD2C38042B00880C9F /* ringbuffer.c */,
+				297731CE2C38042B00880C9F /* ringbuffer.h */,
+				297731D22C38042B00880C9F /* serial_posix.c */,
+				297731DB2C38042B00880C9F /* socket.c */,
+				297731DC2C38042B00880C9F /* socket.h */,
+				297731E02C38042B00880C9F /* suunto_common.c */,
+				297731E12C38042B00880C9F /* suunto_common.h */,
+				297731E22C38042B00880C9F /* suunto_common2.c */,
+				297731E32C38042B00880C9F /* suunto_common2.h */,
+				297731E72C38042B00880C9F /* suunto_eon_parser.c */,
+				297731E82C38042B00880C9F /* suunto_eon.c */,
+				297731E92C38042B00880C9F /* suunto_eon.h */,
+				297731EA2C38042B00880C9F /* suunto_eonsteel_parser.c */,
+				297731ED2C38042B00880C9F /* suunto_solution_parser.c */,
+				297731EE2C38042B00880C9F /* suunto_solution.c */,
+				297731EF2C38042B00880C9F /* suunto_solution.h */,
+				297731F82C38042B00880C9F /* timer.c */,
+				297731F92C38042B00880C9F /* timer.h */,
+				297732042C38042B00880C9F /* version.c */,
+				29E3ED592C3A91D900A14A5A /* configuredc.h */,
+				29E3ED5A2C3A91D900A14A5A /* configuredc.c */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		297732A12C381BA200880C9F /* libdivecomputer */ = {
+			isa = PBXGroup;
+			children = (
+				2977327E2C381BA200880C9F /* ble.h */,
+				2977327F2C381BA200880C9F /* bluetooth.h */,
+				297732802C381BA200880C9F /* buffer.h */,
+				297732812C381BA200880C9F /* common.h */,
+				297732822C381BA200880C9F /* context.h */,
+				297732832C381BA200880C9F /* custom.h */,
+				297732842C381BA200880C9F /* datetime.h */,
+				297732852C381BA200880C9F /* descriptor.h */,
+				297732862C381BA200880C9F /* device.h */,
+				2977328B2C381BA200880C9F /* ioctl.h */,
+				2977328C2C381BA200880C9F /* iostream.h */,
+				2977328E2C381BA200880C9F /* iterator.h */,
+				2977328F2C381BA200880C9F /* Makefile.am */,
+				297732902C381BA200880C9F /* Makefile.in */,
+				297732942C381BA200880C9F /* parser.h */,
+				297732982C381BA200880C9F /* serial.h */,
+				2977329A2C381BA200880C9F /* suunto_eon.h */,
+				2977329C2C381BA200880C9F /* units.h */,
+				2977329F2C381BA200880C9F /* version.h */,
+				297732A02C381BA200880C9F /* version.h.in */,
+				29F579B52C39433500532B0F /* ssrf.h */,
+				29F579B62C39436B00532B0F /* gettext.h */,
+			);
+			path = libdivecomputer;
+			sourceTree = "<group>";
+		};
+		297732A42C381BA200880C9F /* include */ = {
+			isa = PBXGroup;
+			children = (
+				297732A12C381BA200880C9F /* libdivecomputer */,
+				297732A22C381BA200880C9F /* Makefile.am */,
+				297732A32C381BA200880C9F /* Makefile.in */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
 		29ABFDB02C36C72B0094DF48 = {
 			isa = PBXGroup;
 			children = (
@@ -51,10 +299,16 @@
 		29ABFDBB2C36C72B0094DF48 /* BLETest */ = {
 			isa = PBXGroup;
 			children = (
+				29E996BB2C58A19D00BB9070 /* BLEBridge */,
+				297731512C3803BF00880C9F /* libdivecomputer */,
+				2946CBCC2C36C95D00F07865 /* Info.plist */,
 				29ABFDBC2C36C72B0094DF48 /* BLETestApp.swift */,
-				29ABFDBE2C36C72B0094DF48 /* ContentView.swift */,
 				29ABFDC02C36C7300094DF48 /* Assets.xcassets */,
 				29ABFDC22C36C7300094DF48 /* Preview Content */,
+				29ABFDCB2C36C75E0094DF48 /* BluetoothScanView.swift */,
+				29ABFDCD2C36C7880094DF48 /* BLEManager.swift */,
+				2977327C2C38053500880C9F /* BLETest-Bridging-Header.h */,
+				29E996B92C57CE4A00BB9070 /* DeviceConfiguration.swift */,
 			);
 			path = BLETest;
 			sourceTree = "<group>";
@@ -65,6 +319,15 @@
 				29ABFDC32C36C7300094DF48 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		29E996BB2C58A19D00BB9070 /* BLEBridge */ = {
+			isa = PBXGroup;
+			children = (
+				29E6CA932C575F8300523751 /* BLEBridge.h */,
+				29E6CA942C575FB700523751 /* BLEBridge.m */,
+			);
+			path = BLEBridge;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -83,6 +346,9 @@
 			dependencies = (
 			);
 			name = BLETest;
+			packageProductDependencies = (
+				2946CBD02C37AE7A00F07865 /* CrcSwift */,
+			);
 			productName = BLETest;
 			productReference = 29ABFDB92C36C72B0094DF48 /* BLETest.app */;
 			productType = "com.apple.product-type.application";
@@ -99,6 +365,7 @@
 				TargetAttributes = {
 					29ABFDB82C36C72B0094DF48 = {
 						CreatedOnToolsVersion = 15.4;
+						LastSwiftMigration = 1540;
 					};
 				};
 			};
@@ -111,6 +378,9 @@
 				Base,
 			);
 			mainGroup = 29ABFDB02C36C72B0094DF48;
+			packageReferences = (
+				2946CBCF2C37AE7A00F07865 /* XCRemoteSwiftPackageReference "CrcSwift" */,
+			);
 			productRefGroup = 29ABFDBA2C36C72B0094DF48 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -125,6 +395,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				297732A72C381BA200880C9F /* version.h.in in Resources */,
+				297732332C38042D00880C9F /* libdivecomputer.symbols in Resources */,
+				297732322C38042D00880C9F /* libdivecomputer.rc in Resources */,
 				29ABFDC42C36C7300094DF48 /* Preview Assets.xcassets in Resources */,
 				29ABFDC12C36C7300094DF48 /* Assets.xcassets in Resources */,
 			);
@@ -137,8 +410,44 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				29ABFDBF2C36C72B0094DF48 /* ContentView.swift in Sources */,
+				297732212C38042D00880C9F /* descriptor.c in Sources */,
+				2977321C2C38042C00880C9F /* datetime.c in Sources */,
+				297732222C38042D00880C9F /* device.c in Sources */,
+				297732682C38042D00880C9F /* suunto_eonsteel_parser.c in Sources */,
+				297732132C38042C00880C9F /* common.c in Sources */,
+				2977321B2C38042C00880C9F /* custom.c in Sources */,
+				29ABFDCE2C36C7880094DF48 /* BLEManager.swift in Sources */,
+				297732692C38042D00880C9F /* suunto_eonsteel.c in Sources */,
+				297732312C38042D00880C9F /* iterator.c in Sources */,
+				297732082C38042C00880C9F /* aes.c in Sources */,
+				2977320E2C38042C00880C9F /* checksum.c in Sources */,
+				297732292C38042D00880C9F /* hdlc.c in Sources */,
+				297732672C38042D00880C9F /* suunto_eon.c in Sources */,
+				29ABFDCC2C36C75E0094DF48 /* BluetoothScanView.swift in Sources */,
+				297732712C38042D00880C9F /* timer.c in Sources */,
+				297732632C38042D00880C9F /* suunto_common2.c in Sources */,
+				297732792C38042D00880C9F /* version.c in Sources */,
+				2977326A2C38042D00880C9F /* suunto_solution_parser.c in Sources */,
+				2977320D2C38042C00880C9F /* buffer.c in Sources */,
+				2977324D2C38042D00880C9F /* parser.c in Sources */,
+				297732562C38042D00880C9F /* ringbuffer.c in Sources */,
+				297732592C38042D00880C9F /* serial_posix.c in Sources */,
+				297732622C38042D00880C9F /* suunto_common.c in Sources */,
 				29ABFDBD2C36C72B0094DF48 /* BLETestApp.swift in Sources */,
+				29E996BA2C57CE4A00BB9070 /* DeviceConfiguration.swift in Sources */,
+				2977325F2C38042D00880C9F /* socket.c in Sources */,
+				297732142C38042C00880C9F /* context.c in Sources */,
+				2977320C2C38042C00880C9F /* bluetooth.c in Sources */,
+				2977322E2C38042D00880C9F /* ihex.c in Sources */,
+				2977326B2C38042D00880C9F /* suunto_solution.c in Sources */,
+				29E3ED5B2C3A91DA00A14A5A /* configuredc.c in Sources */,
+				297732092C38042C00880C9F /* array.c in Sources */,
+				29E6CA952C575FB700523751 /* BLEBridge.m in Sources */,
+				2977324C2C38042D00880C9F /* packet.c in Sources */,
+				2977324F2C38042D00880C9F /* rbstream.c in Sources */,
+				2977324E2C38042D00880C9F /* platform.c in Sources */,
+				2977322F2C38042D00880C9F /* iostream.c in Sources */,
+				297732662C38042D00880C9F /* suunto_eon_parser.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -269,12 +578,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"BLETest/Preview Content\"";
 				DEVELOPMENT_TEAM = 4X7MY69TG5;
 				ENABLE_PREVIEWS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/BLETest/libdivecomputer/include",
+					"$(SRCROOT)/BLETest/libdivecomputer/src",
+				);
+				INFOPLIST_FILE = BLETest/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -285,9 +603,13 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-Id_classic";
 				PRODUCT_BUNDLE_IDENTIFIER = com.latishabesariani.BLETest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "BLETest/BLETest-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -298,12 +620,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"BLETest/Preview Content\"";
 				DEVELOPMENT_TEAM = 4X7MY69TG5;
 				ENABLE_PREVIEWS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/BLETest/libdivecomputer/include",
+					"$(SRCROOT)/BLETest/libdivecomputer/src",
+				);
+				INFOPLIST_FILE = BLETest/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -314,9 +645,12 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = "-Id_classic";
 				PRODUCT_BUNDLE_IDENTIFIER = com.latishabesariani.BLETest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "BLETest/BLETest-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -344,6 +678,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2946CBCF2C37AE7A00F07865 /* XCRemoteSwiftPackageReference "CrcSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ivanesik/CrcSwift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2946CBD02C37AE7A00F07865 /* CrcSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2946CBCF2C37AE7A00F07865 /* XCRemoteSwiftPackageReference "CrcSwift" */;
+			productName = CrcSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 29ABFDB12C36C72B0094DF48 /* Project object */;
 }
