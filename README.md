@@ -1,4 +1,4 @@
-# Dive Computer BLE Integration Project
+# libdc-swift
 
 This project integrates Bluetooth Low Energy (BLE) functionality with dive computers, specifically focusing on Suunto devices. It provides a bridge between Swift and C for using libdivecomputer, a user interface for scanning and connecting to BLE devices, and a manager for handling BLE operations.
 
