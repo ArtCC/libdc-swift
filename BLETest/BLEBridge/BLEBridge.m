@@ -80,16 +80,15 @@ dc_status_t ble_sleep(ble_object_t *io, unsigned int milliseconds) {
     return DC_STATUS_SUCCESS;
 }
 
-dc_status_t ble_read(ble_object_t *io, void *data, size_t size, size_t *actual) {
+dc_status_t ble_read(ble_object_t *io, void *buffer, size_t requested, size_t *actual)
+{
     CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
-    NSData *receivedData = [manager readData:(int)size];
+    NSData *partialData = [manager readDataPartial:(int)requested];
     
-    if (receivedData) {
-        // Only copy up to the requested size
-        size_t copySize = MIN(receivedData.length, size);
-        memcpy(data, receivedData.bytes, copySize);
-        *actual = copySize;
-        return DC_STATUS_SUCCESS;
+    if (partialData && partialData.length > 0) {
+        memcpy(buffer, partialData.bytes, partialData.length);
+        *actual = partialData.length;
+        return DC_STATUS_SUCCESS;  // indicates partial read is OK
     } else {
         *actual = 0;
         return DC_STATUS_IO;

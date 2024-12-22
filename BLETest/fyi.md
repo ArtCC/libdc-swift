@@ -126,13 +126,18 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
    - Extracts dive profile data
    - Processes sample information
 
-## Example Log Data Structure
-
-
 # Additional FYI
 
-- In BLEBridge.m, do not call [manager close] inside freeBLEObject. That method is only responsible for freeing the ble_object_t struct if we never created a dc_iostream. Otherwise, dc_iostream_close → ble_close will handle closing the manager.  
-- The ble_object_t is allocated by createBLEObject. If iostream creation fails, freeBLEObject is called immediately. Otherwise, once the iostream is created, ble_object_t is exclusively freed in ble_stream_close, after calling ble_close. That avoids any double-free or pointer mismatch.
-- If you cannot remove the dc_iostream_close call from suunto_eonsteel_device_open’s error path, you must avoid calling it again in your own error cleanup. One way is to use the open_suunto_eonsteel_no_doubleclose() function in configuredc.h, which does not call close_device_data (and thus dc_iostream_close) on a suunto_eonsteel_device_open failure.
-- BLE communication with Suunto D5 is notification-based. The device sends data frames via notifications, which we accumulate and return via readData. Never try to directly read from the notification characteristic.
-- Each HDLC frame is marked with 0x7E start/end bytes. The BLE layer accumulates these frames and lets libdivecomputer's HDLC parser handle them.
+- The ble_object_t lifecycle: Created by createBLEObject, freed by freeBLEObject (if iostream creation fails) or by ble_stream_close (if iostream exists). This prevents double-free issues.
+
+- BLE Communication Pattern:
+  - Device sends data via notifications in 20-byte chunks
+  - BLE layer accumulates these chunks in a buffer
+  - Supports partial reads: returns whatever data is available (up to requested size)
+  - Uses 5-second timeout for partial reads, 30-second timeout for full reads
+  - Let's libdivecomputer handle HDLC framing (0x7E markers)
+
+- Error Prevention:
+  - Avoid calling dc_iostream_close twice (once in suunto_eonsteel_device_open, once in error cleanup)
+  - Never try direct reads from notification characteristic
+  - Use thread-safe queue for buffer access

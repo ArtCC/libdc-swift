@@ -20,7 +20,8 @@ import Combine
     @Published var isScanning = false
 
     private var receivedData: Data = Data()
-    private var readSemaphore = DispatchSemaphore(value: 0)
+    private let queue = DispatchQueue(label: "com.blemanager.queue")
+    private let frameMarker: UInt8 = 0x7E
     
     private override init() {
         super.init()
@@ -76,28 +77,85 @@ import Combine
         return notifyCharacteristic.isNotifying
     }
     
-    @objc public func readData(_ size: Int) -> Data? {
-        // Wait for notification data instead of trying to read
-        let result = readSemaphore.wait(timeout: .now() + .seconds(5))
-        if result == .timedOut {
-            return nil
+    private func findNextCompleteFrame() -> Data? {
+        var frameToReturn: Data? = nil
+        
+        queue.sync {
+            // Look for frame start
+            guard let startIndex = receivedData.firstIndex(of: frameMarker) else {
+                return
+            }
+            
+            // Look for frame end after start marker
+            let afterStart = receivedData.index(after: startIndex)
+            guard afterStart < receivedData.count,
+                  let endIndex = receivedData[afterStart...].firstIndex(of: frameMarker) else {
+                return
+            }
+            
+            // Extract the complete frame including markers
+            let frameEndIndex = receivedData.index(after: endIndex)
+            let frame = receivedData[startIndex..<frameEndIndex]
+            
+            // Remove the frame from buffer
+            receivedData.removeSubrange(startIndex..<frameEndIndex)
+            
+            frameToReturn = Data(frame)
         }
         
-        let data = receivedData
-        receivedData.removeAll()
-        return data
+        return frameToReturn
+    }
+    
+    @objc public func readData(_ size: Int) -> Data? {
+        print("ReadData requested \(size) bytes. Currently buffered: \(receivedData.count) bytes")
+        
+        let startTime = Date()
+        let timeout: TimeInterval = 30
+        
+        while true {
+            var dataToReturn: Data?
+            
+            queue.sync {
+                // If we have enough data, return the requested size
+                if receivedData.count >= size {
+                    print("Have enough data (\(receivedData.count) bytes) to satisfy read request of \(size) bytes")
+                    dataToReturn = receivedData.prefix(size)
+                    receivedData.removeSubrange(0..<size)
+                }
+            }
+            
+            if let data = dataToReturn {
+                // Print the actual data being returned for debugging
+                print("Returning \(data.count) bytes: \(data.hexEncodedString())")
+                return data
+            }
+            
+            // Check for timeout
+            let elapsed = Date().timeIntervalSince(startTime)
+            if elapsed > timeout {
+                print("Read timeout after \(elapsed) seconds. Buffer contains: \(receivedData.hexEncodedString())")
+                return nil
+            }
+            
+            // Wait a bit for more data
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
     }
 
     @objc public func writeData(_ data: Data) -> Bool {
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
         
-        // Write without response for Suunto D5
+        print("Writing \(data.count) bytes: \(data.hexEncodedString())")
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
         return true
     }
     
     @objc public func close() {
+        queue.sync {
+            print("Clearing \(receivedData.count) bytes from receive buffer")
+            receivedData.removeAll()
+        }
         if let connectedDevice = self.connectedDevice {
             centralManager.cancelPeripheralConnection(connectedDevice)
         }
@@ -209,15 +267,16 @@ import Combine
          if characteristic.uuid == notifyCharacteristicUUID {
              if let error = error {
                  print("Error receiving notification: \(error.localizedDescription)")
-                 readSemaphore.signal()
                  return
              }
              
              if let value = characteristic.value {
-                 print("Received data from notify characteristic: \(value.hexEncodedString())")
-                 // Append to our buffer
-                 receivedData.append(value)
-                 readSemaphore.signal()
+                 print("Received data from notify characteristic: \(value.hexEncodedString()) (\(value.count) bytes)")
+                 queue.sync {
+                     // Append new data to our buffer
+                     receivedData.append(value)
+                     print("Total buffered data: \(receivedData.count) bytes, Buffer: \(receivedData.hexEncodedString())")
+                 }
              }
          }
      }
@@ -241,6 +300,31 @@ import Combine
              }
          }
      }
+
+    @objc public func readDataPartial(_ requested: Int) -> Data? {
+        let startTime = Date()
+        let partialTimeout: TimeInterval = 5
+        
+        while true {
+            var outData: Data? = nil
+            queue.sync {
+                if receivedData.count > 0 {
+                    let amount = min(requested, receivedData.count)
+                    outData = receivedData.prefix(amount)
+                    receivedData.removeSubrange(0..<amount)
+                }
+            }
+            
+            if let data = outData {
+                return data
+            }
+            
+            if Date().timeIntervalSince(startTime) > partialTimeout {
+                return nil
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
+    }
 }
 
 extension Data {
