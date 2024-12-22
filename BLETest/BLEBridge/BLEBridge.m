@@ -23,9 +23,40 @@ void freeBLEObject(ble_object_t* obj) {
 }
 
 bool connectToBLEDevice(ble_object_t *io, const char *deviceAddress) {
+    if (!io || !deviceAddress) {
+        NSLog(@"Invalid parameters passed to connectToBLEDevice");
+        return false;
+    }
+    
     CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
     NSString *address = [NSString stringWithUTF8String:deviceAddress];
-    return [manager connectToDevice:address];
+    
+    bool success = [manager connectToDevice:address];
+    if (!success) {
+        NSLog(@"Failed to connect to device");
+        return false;
+    }
+    
+    // Wait for initial connection
+    [NSThread sleepForTimeInterval:1.0];
+    
+    // Discover services
+    success = [manager discoverServices];
+    if (!success) {
+        NSLog(@"Service discovery failed");
+        [manager close];
+        return false;
+    }
+    
+    // Enable notifications
+    success = [manager enableNotifications];
+    if (!success) {
+        NSLog(@"Failed to enable notifications");
+        [manager close];
+        return false;
+    }
+    
+    return true;
 }
 
 bool discoverServices(ble_object_t *io) {
@@ -39,7 +70,6 @@ bool enableNotifications(ble_object_t *io) {
 }
 
 dc_status_t ble_set_timeout(ble_object_t *io, int timeout) {
-    // Implement if needed
     return DC_STATUS_SUCCESS;
 }
 

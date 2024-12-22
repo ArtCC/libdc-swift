@@ -9,7 +9,7 @@
 #include "configuredc.h"
 
 typedef struct ble_object {
-    void* manager; // This will hold a pointer to your CoreBluetoothManager
+    void* manager; 
 } ble_object_t;
 
 // BLE object functions
@@ -30,7 +30,6 @@ bool connectToBLEDevice(ble_object_t *io, const char *deviceAddress);
 bool discoverServices(ble_object_t *io);
 bool enableNotifications(ble_object_t *io);
 
-// Add this line
 dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr);
 
 #endif /* BLEBridge_h */

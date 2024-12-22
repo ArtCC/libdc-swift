@@ -2,9 +2,9 @@
 #define CONFIGUREDC_H
 
 #include <stdbool.h>
-#include "libdivecomputer/common.h"
-#include "libdivecomputer/iostream.h"
-#include "libdivecomputer/context.h"
+#include <libdivecomputer/common.h>
+#include <libdivecomputer/iostream.h>
+#include <libdivecomputer/context.h>
 #include "suunto_eonsteel.h"
 
 typedef struct {
@@ -16,7 +16,7 @@ typedef struct {
 typedef struct ble_object ble_object_t;
 
 // Function declarations
-dc_status_t ble_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr);
+dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata);
 dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr);
 
 #endif /* CONFIGUREDC_H */
