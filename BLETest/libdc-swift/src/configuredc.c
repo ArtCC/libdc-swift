@@ -116,8 +116,16 @@ static dc_status_t ble_stream_sleep(dc_iostream_t *iostream, unsigned int millis
 static dc_status_t ble_stream_close(dc_iostream_t *iostream)
 {
     ble_stream_t *s = (ble_stream_t *) iostream;
+    
+    // 1) Close the peripheral (calls manager->close).
     dc_status_t rc = ble_close(s->ble_object);
+    
+    // 2) Now free that ble_object_t pointer itself.
+    freeBLEObject(s->ble_object);
+
+    // 3) Then free the ble_stream_t structure.
     free(s);
+
     return rc;
 }
 
@@ -141,7 +149,7 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
     // 3) Connect to the device
     if (!connectToBLEDevice(io, devaddr)) {
         printf("ble_packet_open: Failed to connect to device\n");
-        freeBLEObject(io);
+        freeBLEObject(io);  // Free immediately on connection failure
         return DC_STATUS_IO;
     }
     printf("ble_packet_open: Connected to device\n");
@@ -150,11 +158,12 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
     dc_status_t status = ble_iostream_create(iostream, context, io);
     if (status != DC_STATUS_SUCCESS) {
         printf("ble_packet_open: Failed to create iostream\n");
-        freeBLEObject(io);
+        freeBLEObject(io);  // Free immediately on iostream creation failure
         return status;
     }
     printf("ble_packet_open: Successfully created iostream\n");
 
+    // 5) Return success (the ble_object is now "owned" by iostream)
     return DC_STATUS_SUCCESS;
 }
 
@@ -171,7 +180,7 @@ static void close_device_data(device_data_t *data) {
         data->device = NULL;
     }
     if (data->iostream) {
-        dc_iostream_close(data->iostream);
+        dc_iostream_close(data->iostream);  // This will trigger ble_stream_close
         data->iostream = NULL;
     }
     if (data->context) {
@@ -216,7 +225,6 @@ dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
     rc = suunto_eonsteel_device_open(&data->device, data->context, data->iostream, 2);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open Suunto device, rc=%d\n", rc);
-        close_device_data(data);
         return rc;
     }
     printf("Suunto device opened successfully\n");

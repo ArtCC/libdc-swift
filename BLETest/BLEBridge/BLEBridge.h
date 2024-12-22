@@ -9,7 +9,7 @@
 #include "configuredc.h"
 
 typedef struct ble_object {
-    void* manager; 
+    void* manager;
 } ble_object_t;
 
 // BLE object functions

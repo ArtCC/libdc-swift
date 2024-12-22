@@ -10,14 +10,12 @@ void initializeBLEManager(void) {
 
 ble_object_t* createBLEObject(void) {
     ble_object_t* obj = malloc(sizeof(ble_object_t));
-    obj->manager = (__bridge_retained void *)bleManager;
+    obj->manager = (__bridge void *)bleManager;
     return obj;
 }
 
 void freeBLEObject(ble_object_t* obj) {
     if (obj) {
-        CoreBluetoothManager *manager = (__bridge_transfer CoreBluetoothManager*)obj->manager;
-        [manager close];
         free(obj);
     }
 }
@@ -87,8 +85,10 @@ dc_status_t ble_read(ble_object_t *io, void *data, size_t size, size_t *actual) 
     NSData *receivedData = [manager readData:(int)size];
     
     if (receivedData) {
-        memcpy(data, receivedData.bytes, receivedData.length);
-        *actual = receivedData.length;
+        // Only copy up to the requested size
+        size_t copySize = MIN(receivedData.length, size);
+        memcpy(data, receivedData.bytes, copySize);
+        *actual = copySize;
         return DC_STATUS_SUCCESS;
     } else {
         *actual = 0;

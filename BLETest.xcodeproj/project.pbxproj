@@ -128,6 +128,9 @@
 		29E9A0222C592F9800BB9070 /* uwatec_smart_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 29E99FAC2C592F9600BB9070 /* uwatec_smart_parser.c */; };
 		29E9A0232C592F9800BB9070 /* uwatec_smart.c in Sources */ = {isa = PBXBuildFile; fileRef = 29E99FAD2C592F9600BB9070 /* uwatec_smart.c */; };
 		29E9A0252C592F9800BB9070 /* zeagle_n2ition3.c in Sources */ = {isa = PBXBuildFile; fileRef = 29E99FB02C592F9600BB9070 /* zeagle_n2ition3.c */; };
+		CEAE9DAC2D186D3000B0F6C4 /* DiveDataViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */; };
+		CEAE9DAD2D186D3000B0F6C4 /* DiveData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */; };
+		CEAE9DAE2D186D3000B0F6C4 /* fyi.md in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DAB2D186D3000B0F6C4 /* fyi.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -357,6 +360,9 @@
 		29E99FAE2C592F9600BB9070 /* uwatec_smart.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = uwatec_smart.h; sourceTree = "<group>"; };
 		29E99FB02C592F9600BB9070 /* zeagle_n2ition3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zeagle_n2ition3.c; sourceTree = "<group>"; };
 		29E99FB12C592F9600BB9070 /* zeagle_n2ition3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zeagle_n2ition3.h; sourceTree = "<group>"; };
+		CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiveDataViewModel.swift; path = BLETest/DiveDataViewModel.swift; sourceTree = "<group>"; };
+		CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiveData.swift; path = BLETest/DiveData.swift; sourceTree = "<group>"; };
+		CEAE9DAB2D186D3000B0F6C4 /* fyi.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = fyi.md; path = BLETest/fyi.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -374,6 +380,9 @@
 		29ABFDB02C36C72B0094DF48 = {
 			isa = PBXGroup;
 			children = (
+				CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */,
+				CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */,
+				CEAE9DAB2D186D3000B0F6C4 /* fyi.md */,
 				29ABFDBB2C36C72B0094DF48 /* BLETest */,
 				29ABFDBA2C36C72B0094DF48 /* Products */,
 			);
@@ -746,6 +755,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CEAE9DAC2D186D3000B0F6C4 /* DiveDataViewModel.swift in Sources */,
+				CEAE9DAD2D186D3000B0F6C4 /* DiveData.swift in Sources */,
+				CEAE9DAE2D186D3000B0F6C4 /* fyi.md in Sources */,
 				29E9A01D2C592F9800BB9070 /* usb.c in Sources */,
 				29E99FE52C592F9800BB9070 /* mares_iconhd_parser.c in Sources */,
 				29E9A0042C592F9800BB9070 /* serial_posix.c in Sources */,

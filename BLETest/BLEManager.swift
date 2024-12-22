@@ -19,6 +19,9 @@ import Combine
     @Published @objc dynamic var connectedDevice: CBPeripheral?
     @Published var isScanning = false
 
+    private var receivedData: Data = Data()
+    private var readSemaphore = DispatchSemaphore(value: 0)
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -74,23 +77,22 @@ import Combine
     }
     
     @objc public func readData(_ size: Int) -> Data? {
-        guard let peripheral = self.peripheral,
-              let characteristic = self.notifyCharacteristic else { return nil }
-        
-        peripheral.readValue(for: characteristic)
-        
-        // Wait for data to be read (you might want to implement a timeout here)
-        while characteristic.value == nil {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        // Wait for notification data instead of trying to read
+        let result = readSemaphore.wait(timeout: .now() + .seconds(5))
+        if result == .timedOut {
+            return nil
         }
         
-        return characteristic.value
+        let data = receivedData
+        receivedData.removeAll()
+        return data
     }
 
     @objc public func writeData(_ data: Data) -> Bool {
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
-
+        
+        // Write without response for Suunto D5
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
         return true
     }
@@ -207,8 +209,15 @@ import Combine
          if characteristic.uuid == notifyCharacteristicUUID {
              if let error = error {
                  print("Error receiving notification: \(error.localizedDescription)")
-             } else if let value = characteristic.value {
+                 readSemaphore.signal()
+                 return
+             }
+             
+             if let value = characteristic.value {
                  print("Received data from notify characteristic: \(value.hexEncodedString())")
+                 // Append to our buffer
+                 receivedData.append(value)
+                 readSemaphore.signal()
              }
          }
      }
