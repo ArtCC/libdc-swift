@@ -189,6 +189,7 @@ static void close_device_data(device_data_t *data) {
 static void event_cb(dc_device_t *device, dc_event_type_t event, const void *data, void *userdata)
 {
     device_data_t *devdata = (device_data_t *)userdata;
+    if (!devdata) return;  // Add safety check
     
     switch (event) {
     case DC_EVENT_DEVINFO:
@@ -202,7 +203,7 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
     case DC_EVENT_PROGRESS:
         {
             const dc_event_progress_t *progress = (const dc_event_progress_t *)data;
-            // Store progress in our device_data_t
+            // Store in our device_data_t structure
             devdata->progress = *progress;
             devdata->have_progress = 1;
         }

@@ -50,9 +50,9 @@ struct ConnectedDeviceView: View {
                         HStack {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
-                            if let deviceData = bluetoothManager.openedDeviceData,
-                               deviceData.have_progress != 0 {
-                                Text("Progress: \(deviceData.progress.current)/\(deviceData.progress.maximum)")
+                            if let devicePtr = bluetoothManager.openedDeviceDataPtr,
+                               devicePtr.pointee.have_progress != 0 {
+                                Text("Downloading dive \(devicePtr.pointee.progress.current) of \(devicePtr.pointee.progress.maximum)")
                                     .padding(.leading)
                             } else {
                                 Text(diveViewModel.progress.description)
@@ -87,12 +87,12 @@ struct ConnectedDeviceView: View {
     }
     
     private func updateDeviceInfo() {
-        guard let deviceData = bluetoothManager.openedDeviceData,
-              deviceData.have_devinfo != 0 else {
+        guard let devicePtr = bluetoothManager.openedDeviceDataPtr,
+              devicePtr.pointee.have_devinfo != 0 else {
             return
         }
         
-        let info = deviceData.devinfo
+        let info = devicePtr.pointee.devinfo
         deviceInfo = String(format: "Model: %d\nFirmware: %d\nSerial: %d",
                           info.model, info.firmware, info.serial)
     }
@@ -102,8 +102,8 @@ struct ConnectedDeviceView: View {
         diveViewModel.clear()
         diveViewModel.progress = .idle
         
-        guard let deviceData = bluetoothManager.openedDeviceData,
-              let device = deviceData.device else {
+        guard let devicePtr = bluetoothManager.openedDeviceDataPtr,
+              let device = devicePtr.pointee.device else {
             diveViewModel.setError("No opened device found.")
             isRetrievingLogs = false
             return
@@ -238,12 +238,12 @@ struct ConnectedDeviceView: View {
         }
         
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
-            if let deviceData = bluetoothManager.openedDeviceData,
-               deviceData.have_progress != 0 {
+            if let devicePtr = bluetoothManager.openedDeviceDataPtr,
+               devicePtr.pointee.have_progress != 0 {
                 DispatchQueue.main.async {
                     diveViewModel.updateProgress(
-                        current: Int(deviceData.progress.current),
-                        total: Int(deviceData.progress.maximum)
+                        current: Int(devicePtr.pointee.progress.current),
+                        total: Int(devicePtr.pointee.progress.maximum)
                     )
                 }
             }

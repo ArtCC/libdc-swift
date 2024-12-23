@@ -24,7 +24,7 @@ import Combine
     private let frameMarker: UInt8 = 0x7E
     
     // Add the device data property
-    public var openedDeviceData: device_data_t?
+    public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>?
     
     private var connectionCompletion: ((Bool) -> Void)?
     
@@ -152,12 +152,14 @@ import Combine
             receivedData.removeAll()
         }
         
-        // Close the device if it's open
-        if let devData = self.openedDeviceData,
-           devData.device != nil {
-            dc_device_close(devData.device)
+        // Update the cleanup code
+        if let devicePtr = self.openedDeviceDataPtr {
+            if devicePtr.pointee.device != nil {
+                dc_device_close(devicePtr.pointee.device)
+            }
+            devicePtr.deallocate()
+            self.openedDeviceDataPtr = nil
         }
-        self.openedDeviceData = nil
         
         if let connectedDevice = self.connectedDevice {
             centralManager.cancelPeripheralConnection(connectedDevice)

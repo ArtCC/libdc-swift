@@ -131,15 +131,18 @@ struct DeviceRow: View {
         
         // Only proceed with device setup after successful connection
         if success {
-            var deviceData = device_data_t()
-            let status = open_suunto_eonsteel(&deviceData, device.identifier.uuidString)
+            // Allocate device_data_t on the heap
+            let deviceDataPtr = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
+            deviceDataPtr.initialize(to: device_data_t())
+            
+            let status = open_suunto_eonsteel(deviceDataPtr, device.identifier.uuidString)
             
             if status == DC_STATUS_SUCCESS {
                 // Set the fingerprint if we have one
                 if let fingerprint = diveViewModel.lastFingerprint {
                     fingerprint.withUnsafeBytes { buffer in
                         let status = dc_device_set_fingerprint(
-                            deviceData.device,
+                            deviceDataPtr.pointee.device,
                             buffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
                             UInt32(buffer.count)
                         )
@@ -149,11 +152,12 @@ struct DeviceRow: View {
                     }
                 }
                 
-                bluetoothManager.openedDeviceData = deviceData
+                bluetoothManager.openedDeviceDataPtr = deviceDataPtr
                 logInfo("Successfully opened Suunto EON Steel device")
                 showConnectedDeviceSheet = true
             } else {
                 logError("Failed to open Suunto EON Steel device")
+                deviceDataPtr.deallocate()
             }
         } else {
             logError("Connection failed for \(device.name ?? "the device")")

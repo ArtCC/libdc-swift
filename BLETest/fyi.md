@@ -4,271 +4,61 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 
 ## Key Files and Their Purposes
 
-### BLETest App
-- **BLETestApp.swift**: Main entry point for the SwiftUI application
-- **BluetoothScanView.swift**: Main UI for scanning and connecting to BLE devices
-  - Implements device discovery and connection interface
-  - Handles device connection state management
-  - Shows connected device details and controls
+### Core Components
+- **BLEManager.swift**: Handles BLE communication and device management
+- **BluetoothScanView.swift**: Main UI for scanning and connecting to devices
+- **ConnectedDeviceView.swift**: Handles dive log retrieval and display
+- **DiveDataViewModel.swift**: Manages dive data and state
 
-### Core Bluetooth Implementation
-- **BLEManager.swift**: Core Bluetooth manager class
-  - Handles BLE device scanning, connection, and communication
-  - Implements CoreBluetooth protocols
-  - Manages Suunto EON Steel specific services and characteristics
+### Protocol Implementation
+- **configuredc.c**: Bridge between Swift and libdivecomputer
+- **suunto_eonsteel.c**: Suunto-specific protocol implementation
 
-### Bridge Layer
-- **BLEBridge.h/.m**: Objective-C bridge between Swift and C code
-  - Provides C interface for BLE operations
-  - Bridges CoreBluetoothManager to libdivecomputer
-  - Handles memory management between Swift and C
-
-### Dive Computer Library
-- **configuredc.h/.c**: Configuration interface for dive computers
-  - Defines device data structures
-  - Implements device opening and configuration
-  - Handles BLE protocol setup
-
-- **suunto_eonsteel.c**: Suunto EON Steel specific implementation
-  - Implements device-specific communication protocol
-  - Handles HDLC protocol for BLE communication
-  - Manages dive data transfer and parsing
-
-### Headers
-- **BLETest-Bridging-Header.h**: Swift-to-C bridging header
-  - Exposes C functions to Swift code
-  - Enables cross-language communication
-- **hdlc.h**: HDLC protocol implementation
-  - Handles HDLC framing for BLE communication
-  - Provides packet encapsulation and error checking
-  - Used by Suunto EON Steel/D5 communication
-
-## Key Protocols and UUIDs
-
-### Suunto EON Steel BLE Services
-- Service UUID: "0000FEF5-0000-1000-8000-00805F9B34FB"
-- Write Characteristic: "C6339440-E62E-11E3-A5B3-0002A5D5C51B" (Write without Response)
-- Notify Characteristic: "D0FD6B80-E62E-11E3-A2E9-0002A5D5C51B" 
-
-## Dependencies
-- CoreBluetooth
-- libdivecomputer (not really modified, only added configuredc.c for trying in Swift app)
-- SwiftUI
-
-## Communication Flow
-1. Swift UI (BluetoothScanView) initiates device scanning and connects to the device.
-2. From ConnectedDeviceView, user taps "Read Dive Data" → calls BLEManager.readData().
-3. BLEManager calls open_suunto_eonsteel() in configuredc.c, which creates a custom DC I/O stream via ble_packet_open().
-4. suunto_eonsteel_device_open() checks DC_TRANSPORT_BLE and calls dc_hdlc_open() internally. 
-5. dc_device_foreach() is called to enumerate all dives on the device.
-6. For each dive log found:
-   - Dive date/time is parsed
-   - Maximum depth is extracted
-   - Dive duration is recorded
-   - All data is printed to console (can be bridged to Swift)
-
-## Communication Protocol
+## Key Features
 
 ### HDLC Protocol
-The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communication:
 - Frame Start/End: 0x7E marker
-- Data is escaped to avoid conflicts with control characters
+- Data is escaped to avoid conflicts
 - Example frame: 7E [payload] 7E
 
 ### Dive Log Structure
-1. Directory Listing Request
-   - Device responds with list of .LOG files
-   - Each log file represents one dive
-   - Format: XXXXXXXX.LOG (where X is hex timestamp)
+- Directory listing returns .LOG files (one per dive)
+- Each log contains timestamp and SBEM data
+- Sample data includes depth, temperature, pressure
 
-2. Log File Format
-   - First 4 bytes: Little-endian timestamp
-   - Remaining data: SBEM (Suunto Binary Encoded Message)
-   - Contains dive profile, settings, and samples
+### Event Handling
+- Uses dc_device_set_events() for device updates
+- Handles device info, progress, and clock events
+- Events stored in device_data_t structure
 
-3. Sample Data Fields
-   - Depth readings
-   - Temperature
-   - Tank pressure
-   - Decompression information
-   - Gas switches
-   - Bookmarks
+### Progress Reporting
+- Directory listing: files processed/total dives
+- File downloads: bytes transferred/total bytes
+- UI updates every 0.5 seconds during operations
 
-### Data Flow
-1. Initial Connection
-   ```
-   7E 0002 0200 [device info] 7E
-   ```
+### Fingerprint Implementation
+- Stores fingerprint of most recent dive
+- Uses UserDefaults for persistence
+- Speeds up subsequent downloads
+- Set via dc_device_set_fingerprint()
 
-2. Directory Listing
-   ```
-   7E 1008/1009 [file entries] 7E
-   ```
+## Common Operations
 
-3. Individual Log Files
-   ```
-   [timestamp][SBEM data]
-   ```
+### Retrieving Dive Logs
+1. Connect to device via BLE
+2. Open device using libdivecomputer
+3. Enumerate dives using dc_device_foreach
+4. Parse dive data using suunto_eonsteel_parser
+5. Display results in UI
 
-## Parsing Process
-1. HDLC Layer
-   - Strips 0x7E markers
-   - De-escapes control sequences
-   - Validates checksums
+### Error Handling
+- Validates device connections
+- Checks parsing status
+- Reports errors in UI
+- Handles BLE disconnections
 
-2. Command Layer
-   - Interprets command codes (0x0002, 0x1008, etc.)
-   - Handles directory listings
-   - Manages file transfers
-
-3. Log Parser
-   - Uses suunto_eonsteel_parser
-   - Extracts dive profile data
-   - Processes sample information
-
-# Additional FYI
-
-- The ble_object_t lifecycle: Created by createBLEObject, freed by freeBLEObject (if iostream creation fails) or by ble_stream_close (if iostream exists). This prevents double-free issues.
-
-- BLE Communication Pattern:
-  - Device sends data via notifications in 20-byte chunks
-  - BLE layer accumulates these chunks in a buffer
-  - Supports partial reads: returns whatever data is available (up to requested size)
-  - Uses 5-second timeout for partial reads, 30-second timeout for full reads
-  - Let's libdivecomputer handle HDLC framing (0x7E markers)
-
-- Error Prevention:
-  - Avoid calling dc_iostream_close twice (once in suunto_eonsteel_device_open, once in error cleanup)
-  - Never try direct reads from notification characteristic
-  - Use thread-safe queue for buffer access
-
-- Fingerprint Implementation:
-  - Stores fingerprint of most recently downloaded dive
-  - Uses UserDefaults for persistence between app launches
-  - Set via dc_device_set_fingerprint() on connection
-  - Speeds up subsequent downloads by skipping known dives
-  - Fingerprint is updated after each successful enumeration
-
-# Steps to Retrieve Dive Logs
-
-1. Build and run the app.  
-   - Make sure libdivecomputer is included and that any bridging from Objective-C to Swift is working properly.  
-   - Confirm the BLEManager is successfully scanning and discovering your Suunto device.
-
-2. In the app's UI (BluetoothScanView.swift):  
-   - Tap "Start Scanning."  
-   - Select your Suunto D5/EON Steel from the list of discovered devices.
-   - The app will attempt to connect and open the device:
-     ```swift
-     var deviceData = device_data_t()
-     let status = open_suunto_eonsteel(&deviceData, device.identifier.uuidString)
-     ```
-   - On success, the device data is stored in BLEManager for later use:
-     ```swift
-     bluetoothManager.openedDeviceData = deviceData
-     ```
-
-3. Once connected, in ConnectedDeviceView:
-   - Tap "Retrieve Dive Logs" to start the enumeration process
-   - The app uses the stored device_data_t to access the device
-   - Creates a ResponseHolder to safely collect dive data
-   - Sets up a callback for processing each dive
-
-4. During dive enumeration:
-   - Uses suunto_eonsteel_parser_create to parse each dive
-   - Extracts datetime information for each dive
-   - Can be extended to get additional dive details (depth, duration, etc.)
-   - Example callback:
-     ```swift
-     let callback: @convention(c) (
-         UnsafePointer<UInt8>?, UInt32,
-         UnsafePointer<UInt8>?, UInt32,
-         UnsafeMutableRawPointer?
-     ) -> Int32
-     ```
-
-5. Dive log results:
-   - Successfully parsed dives are displayed in the UI
-   - Format: "Dive: YYYY-MM-DD HH:MM:SS"
-   - Status messages show success or failure of enumeration
-
-6. Cleanup:
-   - Device is automatically closed when disconnecting
-   - BLEManager handles cleanup of device_data_t
-   - BLE connection is properly terminated
-
-# Implementation Notes
-
-- The device is opened only once during initial connection
-- Device data is stored in BLEManager.openedDeviceData
-- Uses ResponseHolder class to safely collect dive data during enumeration
-- Supports multiple retrievals without reopening the device
-- Proper cleanup on disconnect or app closure
-
-- The device fingerprint is:
-  - Saved after successful dive enumeration
-  - Loaded on app startup
-  - Applied when opening device connection
-  - Used by libdivecomputer to skip already downloaded dives
-
-# Error Handling
-
-- Checks for successful device opening
-- Verifies device data before enumeration
-- Reports parsing errors in the UI
-- Handles BLE disconnection gracefully
-
-# Future Enhancements
-
-- Add parsing of additional dive data (depth, temperature, etc.)
-- Implement dive profile visualization
-- Add support for dive log storage
-- Implement fingerprint tracking for incremental updates
-
-## Partial Data Retrieval
-- Added logic in BluetoothScanView to only retrieve the first 3 logs by returning 0 from the callback when count >= 3.
-
-# Future Works
-- Add “getcount” support to suunto_eonsteel.c if the device’s protocol can provide it. Otherwise, rely on enumeration.
-- Improve partial parsing: e.g., read only the last 5 dives or only from a certain date.
-- Investigate BLE timeouts for large log sets (increase timeouts or parse in smaller chunks).
-- Possibly track per-dive packet progress so you can show a progress bar or spinner for “Downloading 7 of 50 dives.”
-
-## Future Works Based on libdivecomputer Manual
-
-1. Event Callbacks  
-   - The manual recommends using device_set_events() for devinfo, progress, clock synchronization, etc. You may want to implement it for richer device interaction or to display device_name/serial info directly from the library.
-
-2. Fingerprint Storage  
-   - Consider storing the fingerprint of the most recent dive (from the DEVICE_EVENT_DEVINFO event or the last enumerated dive). On the next connection, call device_set_fingerprint() to skip old dives and speed up downloads.
-
-3. Cancellation Support  
-   - If you want a “Cancel” button for long enumerations, consider using device_set_cancel(). This might be helpful if you need to abort an in-progress download more gracefully.
-
-4. Memory Dumps  
-   - If you need deeper debugging or raw data, implement device_dump() with a buffer to retrieve the entire memory image. This is not typically necessary in production but can be useful for diagnostics.
-
-5. Multi-Device Handling  
-   - Currently, the code is oriented around a single connected device. If you plan to support multiple devices simultaneously (via multiple device_data_t instances), ensure synchronization and unique fingerprint storage per device.
-
-6. Enhanced Progress  
-   - The code currently shows dive-by-dive progress. If you handle DEVICE_EVENT_PROGRESS via device_set_events(), you can display more granular progress from the library if it’s supported by the chosen backend.
-
-# Event Handling Implementation
-
-- Device Events:
-  - Uses dc_device_set_events() to receive device updates
-  - Handles DC_EVENT_DEVINFO for device information
-  - Handles DC_EVENT_PROGRESS for download progress
-  - Handles DC_EVENT_CLOCK for device time
-
-- Event Data:
-  - Device info (model, firmware, serial) shown in UI
-  - Progress updates during dive enumeration
-  - Clock synchronization data available
-  - All event data stored in device_data_t structure
-
-- UI Integration:
-  - Shows device model/firmware/serial on connection
-  - Displays accurate progress during downloads
-  - Updates progress bar based on device events
+## Future Improvements
+1. Implement dive profile visualization
+2. Add support for dive log storage
+3. Add cancellation support via device_set_cancel()
+4. Implement multi-device handling

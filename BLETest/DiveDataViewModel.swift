@@ -9,7 +9,6 @@ class DiveDataViewModel: ObservableObject {
     private let fingerprintKey = "lastDiveFingerprint"
     
     init() {
-        // Load saved fingerprint on init
         if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKey) {
             self.lastFingerprint = savedFingerprint
         }
