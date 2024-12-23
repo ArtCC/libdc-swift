@@ -214,3 +214,9 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
 
 ## Partial Data Retrieval
 - Added logic in BluetoothScanView to only retrieve the first 3 logs by returning 0 from the callback when count >= 3.
+
+# Future Works
+- Add “getcount” support to suunto_eonsteel.c if the device’s protocol can provide it. Otherwise, rely on enumeration.
+- Improve partial parsing: e.g., read only the last 5 dives or only from a certain date.
+- Investigate BLE timeouts for large log sets (increase timeouts or parse in smaller chunks).
+- Possibly track per-dive packet progress so you can show a progress bar or spinner for “Downloading 7 of 50 dives.”

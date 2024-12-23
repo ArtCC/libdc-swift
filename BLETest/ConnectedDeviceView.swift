@@ -3,6 +3,34 @@ import CoreBluetooth
 import Combine
 import Foundation
 
+struct ProgressIndicator: View {
+    let progress: DiveDataViewModel.DownloadProgress
+    
+    var body: some View {
+        switch progress {
+        case .inProgress(let current, let total):
+            HStack {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                Text("\(current)/\(total)")
+                    .padding(.leading)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(10)
+            .shadow(radius: 2)
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+        case .error:
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundColor(.red)
+        case .idle:
+            EmptyView()
+        }
+    }
+}
+
 struct ConnectedDeviceView: View {
     let device: CBPeripheral
     @ObservedObject var bluetoothManager: CoreBluetoothManager
@@ -44,16 +72,27 @@ struct ConnectedDeviceView: View {
                         .padding()
                 }
                 
+                Text(diveViewModel.progress.description)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom)
+                
                 Button(action: retrieveDiveLogs) {
                     if isRetrievingLogs {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
+                        HStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                            Text(diveViewModel.progress.description)
+                                .padding(.leading)
+                        }
                     } else {
                         Text("Retrieve Dive Logs")
                     }
                 }
                 .disabled(isRetrievingLogs)
                 .padding()
+                
+                ProgressIndicator(progress: diveViewModel.progress)
+                    .padding()
             }
             .navigationTitle("Connected Device")
             .navigationBarItems(leading: Button {
@@ -77,6 +116,7 @@ struct ConnectedDeviceView: View {
         isRetrievingLogs = true
         diveViewModel.clear()
         diveViewModel.updateStatus("Starting dive log retrieval...")
+        diveViewModel.progress = .idle
         
         guard let deviceData = bluetoothManager.openedDeviceData,
               let device = deviceData.device else {
@@ -88,6 +128,7 @@ struct ConnectedDeviceView: View {
         // Create a struct to hold both the response holder and view model
         struct CallbackContext {
             var logCount: Int = 0
+            var totalLogs: Int = 0
             let viewModel: DiveDataViewModel
         }
         
@@ -100,20 +141,31 @@ struct ConnectedDeviceView: View {
             UnsafePointer<UInt8>?,
             UInt32,
             UnsafeMutableRawPointer?
-        ) -> Int32 = { data, size, _, _, userdata in
+        ) -> Int32 = { data, size, fingerprint, fsize, userdata in
             guard let data = data,
                   let contextPtr = userdata?.assumingMemoryBound(to: CallbackContext.self) else {
                 return 0
             }
             
-            // Stop after retrieving 2 logs
-            if contextPtr.pointee.logCount >= 2 {
-                return 0  // Tells libdivecomputer to skip remaining logs
+            // First pass to count total dives
+            if contextPtr.pointee.totalLogs == 0 {
+                contextPtr.pointee.totalLogs += 1
+                return 1  // Continue enumeration
             }
+            
+            // Second pass to actually process dives
             contextPtr.pointee.logCount += 1
             let currentDiveNumber = contextPtr.pointee.logCount
             
-            logInfo("Now parsing dive #\(currentDiveNumber)")
+            // Update progress
+            DispatchQueue.main.async {
+                contextPtr.pointee.viewModel.updateProgress(
+                    current: currentDiveNumber,
+                    total: contextPtr.pointee.totalLogs
+                )
+            }
+            
+            logInfo("Now parsing dive #\(currentDiveNumber) of \(contextPtr.pointee.totalLogs)")
             
             // Create a parser for this dive
             var parser: OpaquePointer?
@@ -181,7 +233,7 @@ struct ConnectedDeviceView: View {
                 logError("Failed to create parser for dive #\(currentDiveNumber), status: \(rc)")
             }
             
-            return 1 // Continue enumeration
+            return 1  // Continue enumeration
         }
         
         logInfo("Starting dive enumeration...")
@@ -193,10 +245,9 @@ struct ConnectedDeviceView: View {
         
         // Update final status
         if status == DC_STATUS_SUCCESS {
-            diveViewModel.updateStatus("Successfully enumerated \(context.logCount) dives")
+            diveViewModel.progress = .completed
         } else {
-            diveViewModel.updateStatus("Error enumerating dives: \(status)")
-            logError("Failed to enumerate dives, status: \(status)")
+            diveViewModel.setError("Error enumerating dives: \(status)")
         }
         
         isRetrievingLogs = false
