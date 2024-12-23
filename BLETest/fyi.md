@@ -141,3 +141,76 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
   - Avoid calling dc_iostream_close twice (once in suunto_eonsteel_device_open, once in error cleanup)
   - Never try direct reads from notification characteristic
   - Use thread-safe queue for buffer access
+
+# Steps to Retrieve Dive Logs
+
+1. Build and run the app.  
+   - Make sure libdivecomputer is included and that any bridging from Objective-C to Swift is working properly.  
+   - Confirm the BLEManager is successfully scanning and discovering your Suunto device.
+
+2. In the app's UI (BluetoothScanView.swift):  
+   - Tap "Start Scanning."  
+   - Select your Suunto D5/EON Steel from the list of discovered devices.
+   - The app will attempt to connect and open the device:
+     ```swift
+     var deviceData = device_data_t()
+     let status = open_suunto_eonsteel(&deviceData, device.identifier.uuidString)
+     ```
+   - On success, the device data is stored in BLEManager for later use:
+     ```swift
+     bluetoothManager.openedDeviceData = deviceData
+     ```
+
+3. Once connected, in ConnectedDeviceView:
+   - Tap "Retrieve Dive Logs" to start the enumeration process
+   - The app uses the stored device_data_t to access the device
+   - Creates a ResponseHolder to safely collect dive data
+   - Sets up a callback for processing each dive
+
+4. During dive enumeration:
+   - Uses suunto_eonsteel_parser_create to parse each dive
+   - Extracts datetime information for each dive
+   - Can be extended to get additional dive details (depth, duration, etc.)
+   - Example callback:
+     ```swift
+     let callback: @convention(c) (
+         UnsafePointer<UInt8>?, UInt32,
+         UnsafePointer<UInt8>?, UInt32,
+         UnsafeMutableRawPointer?
+     ) -> Int32
+     ```
+
+5. Dive log results:
+   - Successfully parsed dives are displayed in the UI
+   - Format: "Dive: YYYY-MM-DD HH:MM:SS"
+   - Status messages show success or failure of enumeration
+
+6. Cleanup:
+   - Device is automatically closed when disconnecting
+   - BLEManager handles cleanup of device_data_t
+   - BLE connection is properly terminated
+
+# Implementation Notes
+
+- The device is opened only once during initial connection
+- Device data is stored in BLEManager.openedDeviceData
+- Uses ResponseHolder class to safely collect dive data during enumeration
+- Supports multiple retrievals without reopening the device
+- Proper cleanup on disconnect or app closure
+
+# Error Handling
+
+- Checks for successful device opening
+- Verifies device data before enumeration
+- Reports parsing errors in the UI
+- Handles BLE disconnection gracefully
+
+# Future Enhancements
+
+- Add parsing of additional dive data (depth, temperature, etc.)
+- Implement dive profile visualization
+- Add support for dive log storage
+- Implement fingerprint tracking for incremental updates
+
+## Partial Data Retrieval
+- Added logic in BluetoothScanView to only retrieve the first 3 logs by returning 0 from the callback when count >= 3.

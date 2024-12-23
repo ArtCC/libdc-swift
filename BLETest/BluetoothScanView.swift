@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreBluetooth
 import Combine
+import Foundation
 
 struct BluetoothScanView: View {
     @StateObject private var bluetoothManager = CoreBluetoothManager.shared
@@ -120,9 +121,13 @@ struct DeviceRow: View {
         if success {
             print("Connected successfully to \(device.name ?? "the device")")
             
-            // Now, open the Suunto EON Steel device
-            let opened = DeviceConfiguration.openSuuntoEonSteel(deviceAddress: device.identifier.uuidString)
-            if opened {
+            // Create device_data_t and open the Suunto device
+            var deviceData = device_data_t()
+            let status = open_suunto_eonsteel(&deviceData, device.identifier.uuidString)
+            
+            if status == DC_STATUS_SUCCESS {
+                // Store the opened device data in the manager
+                bluetoothManager.openedDeviceData = deviceData
                 print("Successfully opened Suunto EON Steel device")
                 showConnectedDeviceSheet = true
             } else {
@@ -140,6 +145,7 @@ struct ConnectedDeviceView: View {
     @ObservedObject var bluetoothManager: CoreBluetoothManager
     @Environment(\.presentationMode) var presentationMode
     @State private var receivedResponses: [String] = []
+    @State private var isRetrievingLogs = false
     
     var body: some View {
         NavigationView {
@@ -149,32 +155,22 @@ struct ConnectedDeviceView: View {
                     .padding()
                 
                 List {
-                    Section(header: Text("Received Responses")) {
+                    Section(header: Text("Dive Logs")) {
                         ForEach(receivedResponses, id: \.self) { response in
                             Text(response)
                         }
                     }
                 }
                 
-                HStack {
-                    Button("Read Data") {
-                        if let data = bluetoothManager.readData(100) {
-                            receivedResponses.append("Received data: \(data.count) bytes")
-                        } else {
-                            receivedResponses.append("Read error")
-                        }
-                    }
-                    
-                    Button("Write Data") {
-                        let data = "Hello, BLE!".data(using: .utf8)!
-                        let success = bluetoothManager.writeData(data)
-                        if success {
-                            receivedResponses.append("Data written successfully")
-                        } else {
-                            receivedResponses.append("Write error")
-                        }
+                Button(action: retrieveDiveLogs) {
+                    if isRetrievingLogs {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                    } else {
+                        Text("Retrieve Dive Logs")
                     }
                 }
+                .disabled(isRetrievingLogs)
                 .padding()
             }
             .navigationTitle("Connected Device")
@@ -193,5 +189,90 @@ struct ConnectedDeviceView: View {
             })
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+    
+    private func retrieveDiveLogs() {
+        isRetrievingLogs = true
+        receivedResponses.append("Starting dive log retrieval...")
+        
+        guard let deviceData = bluetoothManager.openedDeviceData,
+              let device = deviceData.device else {
+            receivedResponses.append("No opened device found.")
+            isRetrievingLogs = false
+            return
+        }
+        
+        // Create a class to hold our responses that can be captured by the callback
+        class ResponseHolder {
+            var responses: [String] = []
+            var logCount: Int = 0
+        }
+        var responseHolder = ResponseHolder()
+        
+        // Create a callback to handle each dive
+        let callback: @convention(c) (
+            UnsafePointer<UInt8>?,
+            UInt32,
+            UnsafePointer<UInt8>?,
+            UInt32,
+            UnsafeMutableRawPointer?
+        ) -> Int32 = { data, size, _, _, userdata in
+            guard let data = data else { return 0 }
+            
+            // Convert the user data pointer to our ResponseHolder
+            guard let holderPtr = userdata?.assumingMemoryBound(to: ResponseHolder.self),
+                  let holder = holderPtr.pointee as ResponseHolder? else {
+                return 0
+            }
+
+            // Stop after retrieving 3 logs
+            if holder.logCount >= 3 {
+                return 0  // Tells libdivecomputer to skip remaining logs
+            }
+            holder.logCount += 1
+
+            // Create a parser for this dive
+            var parser: OpaquePointer?
+            let context: OpaquePointer? = nil
+            let rc = suunto_eonsteel_parser_create(&parser, context, data, Int(size), 0)
+            
+            if rc == DC_STATUS_SUCCESS && parser != nil {
+                // Get dive time
+                var datetime = dc_datetime_t()
+                if dc_parser_get_datetime(parser, &datetime) == DC_STATUS_SUCCESS {
+                    let response = String(format: "Dive: %04d-%02d-%02d %02d:%02d:%02d",
+                                       datetime.year, datetime.month, datetime.day,
+                                       datetime.hour, datetime.minute, datetime.second)
+                    
+                    if let holder = userdata?.assumingMemoryBound(to: ResponseHolder.self).pointee {
+                        DispatchQueue.main.async {
+                            holder.responses.append(response)
+                        }
+                    }
+                }
+                
+                // Free the parser
+                dc_parser_destroy(parser)
+            }
+            
+            return 1 // Continue enumeration
+        }
+        
+        // Call dc_device_foreach with our callback
+        let status = dc_device_foreach(
+            device,
+            callback,
+            &responseHolder
+        )
+        
+        if status == DC_STATUS_SUCCESS {
+            // Update our UI with the collected responses
+            receivedResponses.append(contentsOf: responseHolder.responses)
+            receivedResponses.append("Successfully enumerated all dives")
+        } else {
+            receivedResponses.append("Error enumerating dives: \(status)")
+        }
+        
+        isRetrievingLogs = false
     }
 }

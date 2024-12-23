@@ -82,17 +82,39 @@ dc_status_t ble_sleep(ble_object_t *io, unsigned int milliseconds) {
 
 dc_status_t ble_read(ble_object_t *io, void *buffer, size_t requested, size_t *actual)
 {
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
-    NSData *partialData = [manager readDataPartial:(int)requested];
+    if (!io || !buffer || !actual) {
+        return DC_STATUS_INVALIDARGS;
+    }
     
-    if (partialData && partialData.length > 0) {
-        memcpy(buffer, partialData.bytes, partialData.length);
-        *actual = partialData.length;
-        return DC_STATUS_SUCCESS;  // indicates partial read is OK
-    } else {
+    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager *)io->manager;
+    uint8_t *outPtr = (uint8_t *)buffer;
+    size_t total = 0;
+    
+    // Keep reading until we've gathered 'requested' bytes or no more data is arriving
+    while (total < requested) {
+        size_t needed = requested - total;
+        // readDataPartial returns up to 'needed' bytes but might return fewer
+        NSData *partialData = [manager readDataPartial:(int)needed];
+        
+        // If no data arrived this iteration, break out
+        if (!partialData || partialData.length == 0) {
+            break;
+        }
+        
+        // Copy new data into our output buffer
+        memcpy(outPtr + total, partialData.bytes, partialData.length);
+        total += partialData.length;
+    }
+    
+    // If we received no data at all, treat it as an I/O error
+    if (total == 0) {
         *actual = 0;
         return DC_STATUS_IO;
     }
+    
+    // Otherwise, we successfully read some or all requested bytes
+    *actual = total;
+    return DC_STATUS_SUCCESS;
 }
 
 dc_status_t ble_write(ble_object_t *io, const void *data, size_t size, size_t *actual) {

@@ -23,6 +23,9 @@ import Combine
     private let queue = DispatchQueue(label: "com.blemanager.queue")
     private let frameMarker: UInt8 = 0x7E
     
+    // Add the device data property
+    public var openedDeviceData: device_data_t?
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -156,6 +159,14 @@ import Combine
             print("Clearing \(receivedData.count) bytes from receive buffer")
             receivedData.removeAll()
         }
+        
+        // Close the device if it's open
+        if let devData = self.openedDeviceData,
+           devData.device != nil {
+            dc_device_close(devData.device)
+        }
+        self.openedDeviceData = nil
+        
         if let connectedDevice = self.connectedDevice {
             centralManager.cancelPeripheralConnection(connectedDevice)
         }
