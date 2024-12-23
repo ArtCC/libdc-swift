@@ -28,6 +28,10 @@ import Combine
     
     private var connectionCompletion: ((Bool) -> Void)?
     
+    private var totalBytesReceived: Int = 0
+    private var lastDataReceived: Date?
+    private var averageTransferRate: Double = 0
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -105,13 +109,13 @@ import Combine
         print("ReadData requested \(size) bytes. Currently buffered: \(receivedData.count) bytes")
         
         let startTime = Date()
-        let timeout: TimeInterval = 30
+        let timeout: TimeInterval = 10
+        let checkInterval: TimeInterval = 0.01
         
         while true {
             var dataToReturn: Data?
             
             queue.sync {
-                // If we have enough data, return the requested size
                 if receivedData.count >= size {
                     print("Have enough data (\(receivedData.count) bytes) to satisfy read request of \(size) bytes")
                     dataToReturn = receivedData.prefix(size)
@@ -120,7 +124,6 @@ import Combine
             }
             
             if let data = dataToReturn {
-                // Print the actual data being returned for debugging
                 print("Returning \(data.count) bytes: \(data.hexEncodedString())")
                 return data
             }
@@ -132,8 +135,8 @@ import Combine
                 return nil
             }
             
-            // Wait a bit for more data
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            // Wait a shorter time for more data
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: checkInterval))
         }
     }
 
@@ -284,12 +287,17 @@ import Combine
         logDebug("Received data: \(preview)... (\(data.count) bytes)")
         
         queue.sync {
-            // Append new data to our buffer
+            // Append new data to our buffer immediately
             receivedData.append(data)
             if Logger.shared.shouldShowRawData {
                 logDebug("Buffer: \(receivedData.hexEncodedString())")
             }
+            
+            // Optional: Notify waiting readers that new data is available
+            // This could be implemented via a condition variable or similar mechanism
         }
+        
+        updateTransferStats(data.count)
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -314,10 +322,10 @@ import Combine
 
     @objc public func readDataPartial(_ requested: Int) -> Data? {
         let startTime = Date()
-        let partialTimeout: TimeInterval = 5
+        let partialTimeout: TimeInterval = 1.0
         
         while true {
-            var outData: Data? = nil
+            var outData: Data?
             queue.sync {
                 if receivedData.count > 0 {
                     let amount = min(requested, receivedData.count)
@@ -333,8 +341,26 @@ import Combine
             if Date().timeIntervalSince(startTime) > partialTimeout {
                 return nil
             }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
         }
+    }
+
+    private func updateTransferStats(_ newBytes: Int) {
+        totalBytesReceived += newBytes
+        
+        if let last = lastDataReceived {
+            let interval = Date().timeIntervalSince(last)
+            if interval > 0 {
+                let currentRate = Double(newBytes) / interval
+                averageTransferRate = (averageTransferRate * 0.7) + (currentRate * 0.3)
+                
+                if totalBytesReceived % 1000 == 0 {  // Log every KB
+                    logInfo("Transfer rate: \(Int(averageTransferRate)) bytes/sec")
+                }
+            }
+        }
+        
+        lastDataReceived = Date()
     }
 }
 

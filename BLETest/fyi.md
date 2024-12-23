@@ -62,3 +62,10 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 2. Add support for dive log storage
 3. Add cancellation support via device_set_cancel()
 4. Implement multi-device handling
+
+## BLE Transfer Optimizations
+- Reduced polling intervals from 100ms to 10ms
+- Shortened timeouts for faster error detection
+- Added transfer rate monitoring
+- Immediate buffer processing of received data
+- Thread-safe buffer management with minimal blocking
