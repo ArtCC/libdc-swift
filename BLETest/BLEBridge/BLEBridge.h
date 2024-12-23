@@ -6,8 +6,10 @@
 #include "libdivecomputer/common.h"
 #include "libdivecomputer/iostream.h"
 #include "libdivecomputer/custom.h"
+#include "libdivecomputer/parser.h"
 #include "configuredc.h"
 
+// BLE object
 typedef struct ble_object {
     void* manager;
 } ble_object_t;

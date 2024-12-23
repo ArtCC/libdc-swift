@@ -134,8 +134,6 @@ static dc_status_t ble_stream_close(dc_iostream_t *iostream)
  * Then we create our custom BLE iostream with ble_iostream_create.
  *------------------------------------------------------------------*/
 dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata) {
-    printf("ble_packet_open: Starting for device %s\n", devaddr);
-    
     // 1) Initialize the Swift BLE manager singletons
     initializeBLEManager();
 
@@ -152,7 +150,6 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
         freeBLEObject(io);  // Free immediately on connection failure
         return DC_STATUS_IO;
     }
-    printf("ble_packet_open: Connected to device\n");
 
     // 4) Create a custom BLE iostream
     dc_status_t status = ble_iostream_create(iostream, context, io);
@@ -161,7 +158,6 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
         freeBLEObject(io);  // Free immediately on iostream creation failure
         return status;
     }
-    printf("ble_packet_open: Successfully created iostream\n");
 
     // 5) Return success (the ble_object is now "owned" by iostream)
     return DC_STATUS_SUCCESS;
@@ -191,8 +187,6 @@ static void close_device_data(device_data_t *data) {
 
 dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
     dc_status_t rc;
-    printf("Starting open_suunto_eonsteel with address: %s\n", devaddr);
-    
     if (!data) {
         printf("Invalid device_data pointer\n");
         return DC_STATUS_INVALIDARGS;
@@ -207,7 +201,6 @@ dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
         printf("Failed to create context, rc=%d\n", rc);
         return rc;
     }
-    printf("Context created successfully\n");
 
     // Create BLE iostream
     rc = ble_packet_open(&data->iostream, data->context, devaddr, data);
@@ -216,7 +209,6 @@ dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
         close_device_data(data);
         return rc;
     }
-    printf("BLE iostream created successfully\n");
 
     // Wait a bit for the connection to stabilize
     dc_iostream_sleep(data->iostream, 1000);
@@ -227,7 +219,5 @@ dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
         printf("Failed to open Suunto device, rc=%d\n", rc);
         return rc;
     }
-    printf("Suunto device opened successfully\n");
-
     return DC_STATUS_SUCCESS;
 }

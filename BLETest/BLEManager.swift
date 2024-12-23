@@ -149,14 +149,14 @@ import Combine
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
         
-        print("Writing \(data.count) bytes: \(data.hexEncodedString())")
+        logDebug("Writing \(data.count) bytes: \(data.hexEncodedString())")
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
         return true
     }
     
     @objc public func close() {
         queue.sync {
-            print("Clearing \(receivedData.count) bytes from receive buffer")
+            logInfo("Clearing \(receivedData.count) bytes from receive buffer")
             receivedData.removeAll()
         }
         
@@ -187,38 +187,38 @@ import Combine
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            print("DEBUG: Bluetooth is powered on")
+            logInfo("Bluetooth is powered on")
         case .poweredOff:
-            print("DEBUG: Bluetooth is powered off")
+            logWarning("Bluetooth is powered off")
         case .resetting:
-            print("DEBUG: Bluetooth is resetting")
+            logWarning("Bluetooth is resetting")
         case .unauthorized:
-            print("DEBUG: Bluetooth is unauthorized")
+            logError("Bluetooth is unauthorized")
         case .unsupported:
-            print("DEBUG: Bluetooth is unsupported")
+            logError("Bluetooth is unsupported")
         case .unknown:
-            print("DEBUG: Bluetooth state is unknown")
+            logWarning("Bluetooth state is unknown")
         @unknown default:
-            print("DEBUG: Unknown Bluetooth state")
+            logWarning("Unknown Bluetooth state")
         }
     }
     
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("DEBUG: Successfully connected to \(peripheral.name ?? "Unknown Device")")
+        logInfo("Successfully connected to \(peripheral.name ?? "Unknown Device")")
         isPeripheralReady = true
         self.connectedDevice = peripheral
         // You can post a notification or use any other method to inform about successful connection
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        print("DEBUG: Failed to connect to \(peripheral.name ?? "Unknown Device"): \(error?.localizedDescription ?? "No error description")")
+        logError("Failed to connect to \(peripheral.name ?? "Unknown Device"): \(error?.localizedDescription ?? "No error description")")
         // You can post a notification or use any other method to inform about failed connection
     }
 
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        print("Disconnected from \(peripheral.name ?? "unknown device")")
+        logInfo("Disconnected from \(peripheral.name ?? "unknown device")")
         if let error = error {
-            print("Disconnect error: \(error.localizedDescription)")
+            logError("Disconnect error: \(error.localizedDescription)")
         }
         isPeripheralReady = false
         self.connectedDevice = nil
@@ -226,7 +226,7 @@ import Combine
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         if peripheral.name != nil {
-            print("Discovered \(peripheral.name ?? "unnamed device")")
+            logDebug("Discovered \(peripheral.name ?? "unnamed device")")
             if !discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
                 discoveredPeripherals.append(peripheral)
             }
@@ -234,83 +234,89 @@ import Combine
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-         if let error = error {
-             print("Error discovering services: \(error.localizedDescription)")
-             return
-         }
-         
-         guard let services = peripheral.services else {
-             print("No services found")
-             return
-         }
-         
-         for service in services {
-             print("Discovered service: \(service.uuid)")
-             peripheral.discoverCharacteristics(nil, for: service)
-         }
-     }
+        if let error = error {
+            logError("Error discovering services: \(error.localizedDescription)")
+            return
+        }
+        
+        guard let services = peripheral.services else {
+            logWarning("No services found")
+            return
+        }
+        
+        for service in services {
+            logDebug("Discovered service: \(service.uuid)")
+            peripheral.discoverCharacteristics(nil, for: service)
+        }
+    }
 
-     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-         if let error = error {
-             print("Error discovering characteristics: \(error.localizedDescription)")
-             return
-         }
-         
-         guard let characteristics = service.characteristics else {
-             print("No characteristics found for service: \(service.uuid)")
-             return
-         }
-         
-         for characteristic in characteristics {
-             print("Discovered characteristic: \(characteristic.uuid)")
-             if characteristic.uuid == writeCharacteristicUUID {
-                 writeCharacteristic = characteristic
-                 print("Write characteristic found")
-             } else if characteristic.uuid == notifyCharacteristicUUID {
-                 notifyCharacteristic = characteristic
-                 print("Notify characteristic found")
-                 peripheral.setNotifyValue(true, for: characteristic)
-             }
-         }
-     }
+    public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        if let error = error {
+            logError("Error discovering characteristics: \(error.localizedDescription)")
+            return
+        }
+        
+        guard let characteristics = service.characteristics else {
+            logWarning("No characteristics found for service: \(service.uuid)")
+            return
+        }
+        
+        for characteristic in characteristics {
+            logDebug("Discovered characteristic: \(characteristic.uuid)")
+            if characteristic.uuid == writeCharacteristicUUID {
+                writeCharacteristic = characteristic
+                logInfo("Write characteristic found")
+            } else if characteristic.uuid == notifyCharacteristicUUID {
+                notifyCharacteristic = characteristic
+                logInfo("Notify characteristic found")
+                peripheral.setNotifyValue(true, for: characteristic)
+            }
+        }
+    }
 
-     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-         if characteristic.uuid == notifyCharacteristicUUID {
-             if let error = error {
-                 print("Error receiving notification: \(error.localizedDescription)")
-                 return
-             }
-             
-             if let value = characteristic.value {
-                 print("Received data from notify characteristic: \(value.hexEncodedString()) (\(value.count) bytes)")
-                 queue.sync {
-                     // Append new data to our buffer
-                     receivedData.append(value)
-                     print("Total buffered data: \(receivedData.count) bytes, Buffer: \(receivedData.hexEncodedString())")
-                 }
-             }
-         }
-     }
+    public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            logError("Error receiving data: \(error.localizedDescription)")
+            return
+        }
+        
+        guard let data = characteristic.value else {
+            logWarning("No data received from characteristic")
+            return
+        }
+        
+        // Log just the data size and first few bytes as a preview
+        let preview = data.prefix(4).map { String(format: "%02x", $0) }.joined()
+        logDebug("Received data: \(preview)... (\(data.count) bytes)")
+        
+        queue.sync {
+            // Append new data to our buffer
+            receivedData.append(data)
+            if Logger.shared.shouldShowRawData {
+                logDebug("Buffer: \(receivedData.hexEncodedString())")
+            }
+        }
+    }
 
-     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-         if characteristic.uuid == writeCharacteristicUUID {
-             if let error = error {
-                 print("Error writing to characteristic: \(error.localizedDescription)")
-             } else {
-                 print("Successfully wrote to characteristic")
-             }
-         }
-     }
+    public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if characteristic.uuid == writeCharacteristicUUID {
+            if let error = error {
+                logError("Error writing to characteristic: \(error.localizedDescription)")
+            } else {
+                logDebug("Successfully wrote to characteristic")
+            }
+        }
+    }
 
-     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-         if characteristic.uuid == notifyCharacteristicUUID {
-             if let error = error {
-                 print("Error changing notification state: \(error.localizedDescription)")
-             } else {
-                 print("Notification state updated: \(characteristic.isNotifying ? "enabled" : "disabled")")
-             }
-         }
-     }
+    public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        if characteristic.uuid == notifyCharacteristicUUID {
+            if let error = error {
+                logError("Error changing notification state: \(error.localizedDescription)")
+            } else {
+                logInfo("Notification state updated: \(characteristic.isNotifying ? "enabled" : "disabled")")
+            }
+        }
+    }
 
     @objc public func readDataPartial(_ requested: Int) -> Data? {
         let startTime = Date()

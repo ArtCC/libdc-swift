@@ -1,37 +1,36 @@
-//import Foundation
-//import Combine
-//
-//class DiveDataViewModel: ObservableObject {
-//    @Published var dives: [DiveData] = []
-//    private var cancellables = Set<AnyCancellable>()
-//    
-//    init() {
-//        // Listen for dive data updates
-//        NotificationCenter.default.publisher(for: Notification.Name("DiveDataUpdated"))
-//            .sink { [weak self] _ in
-//                self?.updateDiveData()
-//            }
-//            .store(in: &cancellables)
-//    }
-//    
-//    func updateDiveData() {
-//        let count = get_dive_count()
-//        var newDives: [DiveData] = []
-//        
-//        for i in 0..<count {
-//            if let diveDataPtr = get_dive_data(Int32(i)) {
-//                let diveData = diveDataPtr.pointee
-//                newDives.append(DiveData(cDiveData: diveData))
-//            }
-//        }
-//        
-//        DispatchQueue.main.async {
-//            self.dives = newDives
-//        }
-//    }
-//    
-//    func clearDiveData() {
-//        reset_dive_data()
-//        dives = []
-//    }
-//} 
+import Foundation
+import Combine
+
+class DiveDataViewModel: ObservableObject {
+    @Published var dives: [DiveData] = []
+    @Published var status: String = ""
+    
+    func addDive(number: Int, year: Int, month: Int, day: Int, 
+                 hour: Int, minute: Int, second: Int,
+                 maxDepth: Double, temperature: Double) {
+        let components = DateComponents(year: year, month: month, day: day,
+                                     hour: hour, minute: minute, second: second)
+        if let date = Calendar.current.date(from: components) {
+            let dive = DiveData(number: number,
+                              datetime: date,
+                              maxDepth: maxDepth,
+                              temperature: temperature)
+            DispatchQueue.main.async {
+                self.dives.append(dive)
+            }
+        }
+    }
+    
+    func updateStatus(_ newStatus: String) {
+        DispatchQueue.main.async {
+            self.status = newStatus
+        }
+    }
+    
+    func clear() {
+        DispatchQueue.main.async {
+            self.dives.removeAll()
+            self.status = ""
+        }
+    }
+} 

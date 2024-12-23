@@ -131,6 +131,8 @@
 		CEAE9DAC2D186D3000B0F6C4 /* DiveDataViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */; };
 		CEAE9DAD2D186D3000B0F6C4 /* DiveData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */; };
 		CEAE9DAE2D186D3000B0F6C4 /* fyi.md in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DAB2D186D3000B0F6C4 /* fyi.md */; };
+		CEAEEE0F2D196350001B0C14 /* ConnectedDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAEEE0E2D196350001B0C14 /* ConnectedDeviceView.swift */; };
+		CEAEEE112D19669C001B0C14 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAEEE102D19669C001B0C14 /* Logger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -363,6 +365,8 @@
 		CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiveDataViewModel.swift; path = BLETest/DiveDataViewModel.swift; sourceTree = "<group>"; };
 		CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DiveData.swift; path = BLETest/DiveData.swift; sourceTree = "<group>"; };
 		CEAE9DAB2D186D3000B0F6C4 /* fyi.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = fyi.md; path = BLETest/fyi.md; sourceTree = "<group>"; };
+		CEAEEE0E2D196350001B0C14 /* ConnectedDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConnectedDeviceView.swift; path = BLETest/ConnectedDeviceView.swift; sourceTree = "<group>"; };
+		CEAEEE102D19669C001B0C14 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Logger.swift; path = BLETest/Logger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -380,6 +384,8 @@
 		29ABFDB02C36C72B0094DF48 = {
 			isa = PBXGroup;
 			children = (
+				CEAEEE102D19669C001B0C14 /* Logger.swift */,
+				CEAEEE0E2D196350001B0C14 /* ConnectedDeviceView.swift */,
 				CEAE9DAA2D186D3000B0F6C4 /* DiveData.swift */,
 				CEAE9DA92D186D2F00B0F6C4 /* DiveDataViewModel.swift */,
 				CEAE9DAB2D186D3000B0F6C4 /* fyi.md */,
@@ -755,6 +761,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CEAEEE112D19669C001B0C14 /* Logger.swift in Sources */,
+				CEAEEE0F2D196350001B0C14 /* ConnectedDeviceView.swift in Sources */,
 				CEAE9DAC2D186D3000B0F6C4 /* DiveDataViewModel.swift in Sources */,
 				CEAE9DAD2D186D3000B0F6C4 /* DiveData.swift in Sources */,
 				CEAE9DAE2D186D3000B0F6C4 /* fyi.md in Sources */,
