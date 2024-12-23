@@ -11,6 +11,15 @@ typedef struct {
     dc_device_t *device;
     dc_context_t *context;
     dc_iostream_t *iostream;
+    
+    int have_devinfo;
+    dc_event_devinfo_t devinfo;
+    
+    int have_progress;
+    dc_event_progress_t progress;
+    
+    int have_clock;
+    dc_event_clock_t clock;
 } device_data_t;
 
 typedef struct ble_object ble_object_t;

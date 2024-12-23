@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "BLEBridge.h"
+#include <libdivecomputer/device.h>
 
 /*--------------------------------------------------------------------
  * BLE stream structures
@@ -176,12 +177,46 @@ static void close_device_data(device_data_t *data) {
         data->device = NULL;
     }
     if (data->iostream) {
-        dc_iostream_close(data->iostream);  // This will trigger ble_stream_close
+        dc_iostream_close(data->iostream);  
         data->iostream = NULL;
     }
     if (data->context) {
         dc_context_free(data->context);
         data->context = NULL;
+    }
+}
+
+static void event_cb(dc_device_t *device, dc_event_type_t event, const void *data, void *userdata)
+{
+    device_data_t *devdata = (device_data_t *)userdata;
+    
+    switch (event) {
+    case DC_EVENT_DEVINFO:
+        {
+            const dc_event_devinfo_t *devinfo = (const dc_event_devinfo_t *)data;
+            // Store device info in our device_data_t
+            devdata->devinfo = *devinfo;
+            devdata->have_devinfo = 1;
+        }
+        break;
+    case DC_EVENT_PROGRESS:
+        {
+            const dc_event_progress_t *progress = (const dc_event_progress_t *)data;
+            // Store progress in our device_data_t
+            devdata->progress = *progress;
+            devdata->have_progress = 1;
+        }
+        break;
+    case DC_EVENT_CLOCK:
+        {
+            const dc_event_clock_t *clock = (const dc_event_clock_t *)data;
+            // Store clock info
+            devdata->clock = *clock;
+            devdata->have_clock = 1;
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -210,14 +245,24 @@ dc_status_t open_suunto_eonsteel(device_data_t *data, const char *devaddr) {
         return rc;
     }
 
-    // Wait a bit for the connection to stabilize
-    dc_iostream_sleep(data->iostream, 1000);
-
     // Open Suunto device
     rc = suunto_eonsteel_device_open(&data->device, data->context, data->iostream, 2);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open Suunto device, rc=%d\n", rc);
         return rc;
     }
-    return DC_STATUS_SUCCESS;
+
+    // After opening the device, set up event handler
+    if (rc == DC_STATUS_SUCCESS) {
+        // Enable all events we're interested in
+        unsigned int events = DC_EVENT_DEVINFO | DC_EVENT_PROGRESS | DC_EVENT_CLOCK;
+        rc = dc_device_set_events(data->device, events, event_cb, data);
+        if (rc != DC_STATUS_SUCCESS) {
+            printf("Failed to set event handler, rc=%d\n", rc);
+            close_device_data(data);
+            return rc;
+        }
+    }
+    
+    return rc;
 }

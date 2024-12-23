@@ -5,10 +5,24 @@ class DiveDataViewModel: ObservableObject {
     @Published var dives: [DiveData] = []
     @Published var status: String = ""
     @Published var progress: DownloadProgress = .idle
+    @Published var lastFingerprint: Data?
+    private let fingerprintKey = "lastDiveFingerprint"
+    
+    init() {
+        // Load saved fingerprint on init
+        if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKey) {
+            self.lastFingerprint = savedFingerprint
+        }
+    }
+    
+    func saveFingerprint(_ fingerprint: Data) {
+        self.lastFingerprint = fingerprint
+        UserDefaults.standard.set(fingerprint, forKey: fingerprintKey)
+    }
     
     enum DownloadProgress {
         case idle
-        case inProgress(current: Int, total: Int)
+        case inProgress(current: Int, total: Int?)
         case completed
         case error(String)
         
@@ -17,7 +31,11 @@ class DiveDataViewModel: ObservableObject {
             case .idle:
                 return "Ready to download"
             case .inProgress(let current, let total):
-                return "Downloading dive \(current) of \(total)"
+                if let total = total {
+                    return "Downloading dive \(current) of \(total)"
+                } else {
+                    return "Downloading dive \(current)"
+                }
             case .completed:
                 return "Download completed"
             case .error(let message):
@@ -48,7 +66,7 @@ class DiveDataViewModel: ObservableObject {
         }
     }
     
-    func updateProgress(current: Int, total: Int) {
+    func updateProgress(current: Int, total: Int?) {
         DispatchQueue.main.async {
             self.progress = .inProgress(current: current, total: total)
         }

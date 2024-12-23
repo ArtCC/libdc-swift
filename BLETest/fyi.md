@@ -142,6 +142,13 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
   - Never try direct reads from notification characteristic
   - Use thread-safe queue for buffer access
 
+- Fingerprint Implementation:
+  - Stores fingerprint of most recently downloaded dive
+  - Uses UserDefaults for persistence between app launches
+  - Set via dc_device_set_fingerprint() on connection
+  - Speeds up subsequent downloads by skipping known dives
+  - Fingerprint is updated after each successful enumeration
+
 # Steps to Retrieve Dive Logs
 
 1. Build and run the app.  
@@ -198,6 +205,12 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
 - Supports multiple retrievals without reopening the device
 - Proper cleanup on disconnect or app closure
 
+- The device fingerprint is:
+  - Saved after successful dive enumeration
+  - Loaded on app startup
+  - Applied when opening device connection
+  - Used by libdivecomputer to skip already downloaded dives
+
 # Error Handling
 
 - Checks for successful device opening
@@ -220,3 +233,42 @@ The Suunto D5 uses HDLC (High-Level Data Link Control) framing for BLE communica
 - Improve partial parsing: e.g., read only the last 5 dives or only from a certain date.
 - Investigate BLE timeouts for large log sets (increase timeouts or parse in smaller chunks).
 - Possibly track per-dive packet progress so you can show a progress bar or spinner for “Downloading 7 of 50 dives.”
+
+## Future Works Based on libdivecomputer Manual
+
+1. Event Callbacks  
+   - The manual recommends using device_set_events() for devinfo, progress, clock synchronization, etc. You may want to implement it for richer device interaction or to display device_name/serial info directly from the library.
+
+2. Fingerprint Storage  
+   - Consider storing the fingerprint of the most recent dive (from the DEVICE_EVENT_DEVINFO event or the last enumerated dive). On the next connection, call device_set_fingerprint() to skip old dives and speed up downloads.
+
+3. Cancellation Support  
+   - If you want a “Cancel” button for long enumerations, consider using device_set_cancel(). This might be helpful if you need to abort an in-progress download more gracefully.
+
+4. Memory Dumps  
+   - If you need deeper debugging or raw data, implement device_dump() with a buffer to retrieve the entire memory image. This is not typically necessary in production but can be useful for diagnostics.
+
+5. Multi-Device Handling  
+   - Currently, the code is oriented around a single connected device. If you plan to support multiple devices simultaneously (via multiple device_data_t instances), ensure synchronization and unique fingerprint storage per device.
+
+6. Enhanced Progress  
+   - The code currently shows dive-by-dive progress. If you handle DEVICE_EVENT_PROGRESS via device_set_events(), you can display more granular progress from the library if it’s supported by the chosen backend.
+
+# Event Handling Implementation
+
+- Device Events:
+  - Uses dc_device_set_events() to receive device updates
+  - Handles DC_EVENT_DEVINFO for device information
+  - Handles DC_EVENT_PROGRESS for download progress
+  - Handles DC_EVENT_CLOCK for device time
+
+- Event Data:
+  - Device info (model, firmware, serial) shown in UI
+  - Progress updates during dive enumeration
+  - Clock synchronization data available
+  - All event data stored in device_data_t structure
+
+- UI Integration:
+  - Shows device model/firmware/serial on connection
+  - Displays accurate progress during downloads
+  - Updates progress bar based on device events

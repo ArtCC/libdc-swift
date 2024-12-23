@@ -3,86 +3,61 @@ import CoreBluetooth
 import Combine
 import Foundation
 
-struct ProgressIndicator: View {
-    let progress: DiveDataViewModel.DownloadProgress
-    
-    var body: some View {
-        switch progress {
-        case .inProgress(let current, let total):
-            HStack {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                Text("\(current)/\(total)")
-                    .padding(.leading)
-            }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(10)
-            .shadow(radius: 2)
-        case .completed:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-        case .error:
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundColor(.red)
-        case .idle:
-            EmptyView()
-        }
-    }
-}
-
 struct ConnectedDeviceView: View {
     let device: CBPeripheral
     @ObservedObject var bluetoothManager: CoreBluetoothManager
-    @StateObject private var diveViewModel = DiveDataViewModel()
+    @ObservedObject var diveViewModel: DiveDataViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var isRetrievingLogs = false
+    @State private var deviceInfo: String = ""
     
     var body: some View {
-        NavigationView {
-            VStack {
-                Text("Connected to: \(device.name ?? "Unknown Device")")
-                    .font(.headline)
+        VStack {
+            Text("Connected to: \(device.name ?? "Unknown Device")")
+                .font(.headline)
+                .padding()
+            
+            if !deviceInfo.isEmpty {
+                Text(deviceInfo)
+                    .font(.subheadline)
                     .padding()
-                
-                List {
-                    Section(header: Text("Dive Logs")) {
-                        ForEach(diveViewModel.dives) { dive in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Dive #\(dive.number)")
-                                    .font(.headline)
-                                Text(dive.formattedDateTime)
-                                    .font(.subheadline)
-                                HStack {
-                                    Text(String(format: "%.1fm", dive.maxDepth))
-                                    Spacer()
-                                    Text(String(format: "%.1f°C", dive.temperature))
-                                }
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            }
+            
+            List {
+                Section(header: Text("Dive Logs")) {
+                    ForEach(diveViewModel.dives) { dive in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Dive #\(dive.number)")
+                                .font(.headline)
+                            Text(dive.formattedDateTime)
+                                .font(.subheadline)
+                            HStack {
+                                Text(String(format: "%.1fm", dive.maxDepth))
+                                Spacer()
+                                Text(String(format: "%.1f°C", dive.temperature))
                             }
-                            .padding(.vertical, 4)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                         }
+                        .padding(.vertical, 4)
                     }
                 }
-                
-                if !diveViewModel.status.isEmpty {
-                    Text(diveViewModel.status)
-                        .foregroundColor(.secondary)
-                        .padding()
-                }
-                
-                Text(diveViewModel.progress.description)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom)
-                
+            }
+            
+            VStack(spacing: 12) {
                 Button(action: retrieveDiveLogs) {
                     if isRetrievingLogs {
                         HStack {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
-                            Text(diveViewModel.progress.description)
-                                .padding(.leading)
+                            if let deviceData = bluetoothManager.openedDeviceData,
+                               deviceData.have_progress != 0 {
+                                Text("Progress: \(deviceData.progress.current)/\(deviceData.progress.maximum)")
+                                    .padding(.leading)
+                            } else {
+                                Text(diveViewModel.progress.description)
+                                    .padding(.leading)
+                            }
                         }
                     } else {
                         Text("Retrieve Dive Logs")
@@ -90,37 +65,46 @@ struct ConnectedDeviceView: View {
                 }
                 .disabled(isRetrievingLogs)
                 .padding()
-                
-                ProgressIndicator(progress: diveViewModel.progress)
-                    .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(10)
+                .shadow(radius: 2)
             }
-            .navigationTitle("Connected Device")
-            .navigationBarItems(leading: Button {
-                presentationMode.wrappedValue.dismiss()
-            } label: {
-                Image(systemName: "xmark")
-            })
-            .navigationBarItems(trailing: Button("Disconnect") {
-                print("Disconnect button pressed")
-                bluetoothManager.close()
-                DispatchQueue.main.async {
-                    self.bluetoothManager.objectWillChange.send()
-                }
-                presentationMode.wrappedValue.dismiss()
-            })
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.bottom)
         }
+        .navigationTitle("Connected Device")
+        .navigationBarItems(trailing: Button("Disconnect") {
+            print("Disconnect button pressed")
+            bluetoothManager.close()
+            DispatchQueue.main.async {
+                self.bluetoothManager.objectWillChange.send()
+            }
+            presentationMode.wrappedValue.dismiss()
+        })
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            updateDeviceInfo()
+        }
+    }
+    
+    private func updateDeviceInfo() {
+        guard let deviceData = bluetoothManager.openedDeviceData,
+              deviceData.have_devinfo != 0 else {
+            return
+        }
+        
+        let info = deviceData.devinfo
+        deviceInfo = String(format: "Model: %d\nFirmware: %d\nSerial: %d",
+                          info.model, info.firmware, info.serial)
     }
     
     private func retrieveDiveLogs() {
         isRetrievingLogs = true
         diveViewModel.clear()
-        diveViewModel.updateStatus("Starting dive log retrieval...")
         diveViewModel.progress = .idle
         
         guard let deviceData = bluetoothManager.openedDeviceData,
               let device = deviceData.device else {
-            diveViewModel.updateStatus("No opened device found.")
+            diveViewModel.setError("No opened device found.")
             isRetrievingLogs = false
             return
         }
@@ -130,6 +114,7 @@ struct ConnectedDeviceView: View {
             var logCount: Int = 0
             var totalLogs: Int = 0
             let viewModel: DiveDataViewModel
+            var lastFingerprint: Data?
         }
         
         var context = CallbackContext(viewModel: diveViewModel)
@@ -143,17 +128,15 @@ struct ConnectedDeviceView: View {
             UnsafeMutableRawPointer?
         ) -> Int32 = { data, size, fingerprint, fsize, userdata in
             guard let data = data,
-                  let contextPtr = userdata?.assumingMemoryBound(to: CallbackContext.self) else {
+                  let contextPtr = userdata?.assumingMemoryBound(to: CallbackContext.self),
+                  let fingerprint = fingerprint else {
                 return 0
             }
             
-            // First pass to count total dives
-            if contextPtr.pointee.totalLogs == 0 {
-                contextPtr.pointee.totalLogs += 1
-                return 1  // Continue enumeration
-            }
+            // Store fingerprint of the most recent dive
+            let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
+            contextPtr.pointee.lastFingerprint = fingerprintData
             
-            // Second pass to actually process dives
             contextPtr.pointee.logCount += 1
             let currentDiveNumber = contextPtr.pointee.logCount
             
@@ -161,11 +144,11 @@ struct ConnectedDeviceView: View {
             DispatchQueue.main.async {
                 contextPtr.pointee.viewModel.updateProgress(
                     current: currentDiveNumber,
-                    total: contextPtr.pointee.totalLogs
+                    total: nil  // We don't know the total
                 )
             }
             
-            logInfo("Now parsing dive #\(currentDiveNumber) of \(contextPtr.pointee.totalLogs)")
+            logInfo("Now parsing dive #\(currentDiveNumber)")
             
             // Create a parser for this dive
             var parser: OpaquePointer?
@@ -207,7 +190,6 @@ struct ConnectedDeviceView: View {
                     // Process all samples
                     let samplesStatus = dc_parser_samples_foreach(parser, sampleCallback, &sampleData)
                     if samplesStatus == DC_STATUS_SUCCESS {
-                        // Update the view model with the new dive
                         DispatchQueue.main.async {
                             contextPtr.pointee.viewModel.addDive(
                                 number: currentDiveNumber,
@@ -233,24 +215,43 @@ struct ConnectedDeviceView: View {
                 logError("Failed to create parser for dive #\(currentDiveNumber), status: \(rc)")
             }
             
-            return 1  // Continue enumeration
+            return 1
         }
         
-        logInfo("Starting dive enumeration...")
-        let status = dc_device_foreach(
-            device,
-            callback,
-            &context
-        )
-        
-        // Update final status
-        if status == DC_STATUS_SUCCESS {
-            diveViewModel.progress = .completed
-        } else {
-            diveViewModel.setError("Error enumerating dives: \(status)")
+        // Run the enumeration in the background to keep the UI responsive
+        DispatchQueue.global(qos: .userInitiated).async {
+            logInfo("Starting dive enumeration...")
+            let status = dc_device_foreach(device, callback, &context)
+            
+            // Once done, update status & UI on the main thread
+            DispatchQueue.main.async {
+                if status == DC_STATUS_SUCCESS {
+                    if let lastFingerprint = context.lastFingerprint {
+                        diveViewModel.saveFingerprint(lastFingerprint)
+                    }
+                    diveViewModel.progress = .completed
+                } else {
+                    diveViewModel.setError("Error enumerating dives: \(status)")
+                }
+                isRetrievingLogs = false
+            }
         }
         
-        isRetrievingLogs = false
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            if let deviceData = bluetoothManager.openedDeviceData,
+               deviceData.have_progress != 0 {
+                DispatchQueue.main.async {
+                    diveViewModel.updateProgress(
+                        current: Int(deviceData.progress.current),
+                        total: Int(deviceData.progress.maximum)
+                    )
+                }
+            }
+            
+            if !isRetrievingLogs {
+                timer.invalidate()
+            }
+        }
     }
 }
 

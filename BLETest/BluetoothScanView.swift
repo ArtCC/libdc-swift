@@ -5,6 +5,7 @@ import Foundation
 
 struct BluetoothScanView: View {
     @StateObject private var bluetoothManager = CoreBluetoothManager.shared
+    @StateObject private var diveViewModel = DiveDataViewModel()
     @State private var showingConnectedDeviceSheet = false
     @State private var isLoading = false
     @State private var discoveredPeripherals: [CBPeripheral] = []
@@ -14,12 +15,13 @@ struct BluetoothScanView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text("My Devices")) {
                     if let connectedDevice = bluetoothManager.connectedDevice {
                         DeviceRow(device: connectedDevice, 
-                                bluetoothManager: bluetoothManager, 
+                                bluetoothManager: bluetoothManager,
+                                diveViewModel: diveViewModel,
                                 showConnectedDeviceSheet: $showingConnectedDeviceSheet)
                     }
                 }
@@ -35,7 +37,8 @@ struct BluetoothScanView: View {
                     ForEach(filteredPeripherals, id: \.identifier) { device in
                         if device != bluetoothManager.connectedDevice {
                             DeviceRow(device: device, 
-                                    bluetoothManager: bluetoothManager, 
+                                    bluetoothManager: bluetoothManager,
+                                    diveViewModel: diveViewModel,
                                     showConnectedDeviceSheet: $showingConnectedDeviceSheet)
                         }
                     }
@@ -58,9 +61,11 @@ struct BluetoothScanView: View {
                     }
                 }
             }
-            .fullScreenCover(isPresented: $showingConnectedDeviceSheet) {
+            .navigationDestination(isPresented: $showingConnectedDeviceSheet) {
                 if let connectedDevice = bluetoothManager.connectedDevice {
-                    ConnectedDeviceView(device: connectedDevice, bluetoothManager: bluetoothManager)
+                    ConnectedDeviceView(device: connectedDevice, 
+                                      bluetoothManager: bluetoothManager,
+                                      diveViewModel: diveViewModel)
                 }
             }
         }
@@ -85,6 +90,7 @@ struct BluetoothScanView: View {
 struct DeviceRow: View {
     let device: CBPeripheral
     @ObservedObject var bluetoothManager: CoreBluetoothManager
+    @ObservedObject var diveViewModel: DiveDataViewModel
     @Binding var showConnectedDeviceSheet: Bool
     @State private var isConnecting = false
     
@@ -122,13 +128,27 @@ struct DeviceRow: View {
     private func connectToDevice(_ device: CBPeripheral) {
         isConnecting = true
         let success = bluetoothManager.connectToDevice(device.identifier.uuidString)
+        
+        // Only proceed with device setup after successful connection
         if success {
-            // Create device_data_t and open the Suunto device
             var deviceData = device_data_t()
             let status = open_suunto_eonsteel(&deviceData, device.identifier.uuidString)
             
             if status == DC_STATUS_SUCCESS {
-                // Store the opened device data in the manager
+                // Set the fingerprint if we have one
+                if let fingerprint = diveViewModel.lastFingerprint {
+                    fingerprint.withUnsafeBytes { buffer in
+                        let status = dc_device_set_fingerprint(
+                            deviceData.device,
+                            buffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                            UInt32(buffer.count)
+                        )
+                        if status != DC_STATUS_SUCCESS {
+                            logError("Failed to set fingerprint")
+                        }
+                    }
+                }
+                
                 bluetoothManager.openedDeviceData = deviceData
                 logInfo("Successfully opened Suunto EON Steel device")
                 showConnectedDeviceSheet = true

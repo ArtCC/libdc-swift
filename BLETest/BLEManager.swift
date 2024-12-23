@@ -26,6 +26,8 @@ import Combine
     // Add the device data property
     public var openedDeviceData: device_data_t?
     
+    private var connectionCompletion: ((Bool) -> Void)?
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -40,17 +42,7 @@ import Combine
         self.peripheral = peripheral
         peripheral.delegate = self
         centralManager.connect(peripheral, options: nil)
-        
-        // Wait for connection (you might want to implement a timeout here)
-        let startTime = Date()
-        while self.connectedDevice == nil {
-            if Date().timeIntervalSince(startTime) > 10 { // 10 second timeout
-                return false
-            }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        }
-        
-        return self.connectedDevice != nil
+        return true  // Return immediately, connection status will be handled by delegate
     }
     
     @objc public func discoverServices() -> Bool {
@@ -205,9 +197,10 @@ import Combine
     
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         logInfo("Successfully connected to \(peripheral.name ?? "Unknown Device")")
-        isPeripheralReady = true
-        self.connectedDevice = peripheral
-        // You can post a notification or use any other method to inform about successful connection
+        DispatchQueue.main.async {
+            self.isPeripheralReady = true
+            self.connectedDevice = peripheral
+        }
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -245,7 +238,6 @@ import Combine
         }
         
         for service in services {
-            logDebug("Discovered service: \(service.uuid)")
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
