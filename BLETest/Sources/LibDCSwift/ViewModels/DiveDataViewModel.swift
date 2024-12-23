@@ -21,7 +21,7 @@ class DiveDataViewModel: ObservableObject {
     
     enum DownloadProgress {
         case idle
-        case inProgress(current: Int, total: Int?)
+        case inProgress(count: Int)
         case completed
         case error(String)
         
@@ -29,12 +29,8 @@ class DiveDataViewModel: ObservableObject {
             switch self {
             case .idle:
                 return "Ready to download"
-            case .inProgress(let current, let total):
-                if let total = total {
-                    return "Downloading dive \(current) of \(total)"
-                } else {
-                    return "Downloading dive \(current)"
-                }
+            case .inProgress(let count):
+                return "Downloading dive \(count)"
             case .completed:
                 return "Download completed"
             case .error(let message):
@@ -55,6 +51,9 @@ class DiveDataViewModel: ObservableObject {
                               temperature: temperature)
             DispatchQueue.main.async {
                 self.dives.append(dive)
+                if case .inProgress = self.progress {
+                    self.progress = .inProgress(count: self.dives.count)
+                }
             }
         }
     }
@@ -67,7 +66,7 @@ class DiveDataViewModel: ObservableObject {
     
     func updateProgress(current: Int, total: Int?) {
         DispatchQueue.main.async {
-            self.progress = .inProgress(current: current, total: total)
+            self.progress = .inProgress(count: current)
         }
     }
     

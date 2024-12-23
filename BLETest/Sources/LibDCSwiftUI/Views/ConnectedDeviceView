@@ -50,14 +50,8 @@ struct ConnectedDeviceView: View {
                         HStack {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
-                            if let devicePtr = bluetoothManager.openedDeviceDataPtr,
-                               devicePtr.pointee.have_progress != 0 {
-                                Text("Downloading dive \(devicePtr.pointee.progress.current) of \(devicePtr.pointee.progress.maximum)")
+                            Text(diveViewModel.progress.description)
                                     .padding(.leading)
-                            } else {
-                                Text(diveViewModel.progress.description)
-                                    .padding(.leading)
-                            }
                         }
                     } else {
                         Text("Retrieve Dive Logs")

@@ -32,9 +32,10 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 - Events stored in device_data_t structure
 
 ### Progress Reporting
-- Directory listing: files processed/total dives
-- File downloads: bytes transferred/total bytes
-- UI updates every 0.5 seconds during operations
+- Real-time dive counting as logs are processed
+- Accurate representation of discovered dives
+- UI updates as each dive is parsed
+- No dependency on device-reported progress
 
 ### Fingerprint Implementation
 - Stores fingerprint of most recent dive
