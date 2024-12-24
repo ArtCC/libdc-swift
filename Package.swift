@@ -49,7 +49,11 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
+                .headerSearchPath("../Clibdivecomputer/include"),
                 .headerSearchPath("../libdivecomputer/include")
+            ],
+            swiftSettings: [
+                .define("PRODUCT_MODULE_NAME=libdc_swift")
             ]
         ),
         // Test targets

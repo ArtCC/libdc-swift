@@ -1,5 +1,6 @@
 #import "BLEBridge.h"
 #import <Foundation/Foundation.h>
+#import "libdc_swift-Swift.h"
 
 static CoreBluetoothManager *bleManager = nil;
 
