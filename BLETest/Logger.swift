@@ -19,7 +19,7 @@ enum LogLevel: Int {
 class Logger {
     static let shared = Logger()
     private var isEnabled = true
-    private var minLevel: LogLevel = .info
+    private var minLevel: LogLevel = .debug
     public var shouldShowRawData = false  // Toggle for full hex dumps
     private var dataCounter = 0  // Track number of data packets
     private var totalBytesReceived = 0  // Track total bytes
@@ -29,6 +29,11 @@ class Logger {
         formatter.dateFormat = "HH:mm:ss.SSS"
         return formatter
     }()
+    
+    var minimumLogLevel: LogLevel {
+        get { minLevel }
+        set { minLevel = newValue }
+    }
     
     func setMinLevel(_ level: LogLevel) {
         minLevel = level
@@ -40,15 +45,18 @@ class Logger {
         let timestamp = dateFormatter.string(from: Date())
         let fileName = (file as NSString).lastPathComponent
         
-        // Special handling for BLE data logs
+        // Skip routine BLE data logs
         if message.starts(with: "Received data") {
-            handleBLEDataLog(message, timestamp)
+            // Only handle if it's a completion or error message
+            if message.contains("completed") || message.contains("error") {
+                handleBLEDataLog(message, timestamp)
+            }
             return
         }
         
+        // Skip buffer logs unless explicitly requested and important
         if message.contains("bytes, Buffer:") {
-            // Skip buffer logs unless explicitly enabled
-            if shouldShowRawData {
+            if shouldShowRawData && (message.contains("error") || message.contains("important")) {
                 let components = message.components(separatedBy: "Buffer: ")
                 if components.count > 1 {
                     let hexData = components[1]
@@ -58,7 +66,34 @@ class Logger {
             return
         }
         
-        print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
+        // Only log important BLE events
+        if fileName == "BLEManager.swift" {
+            let importantEvents = [
+                "Bluetooth is powered on",
+                "Successfully connected to",
+                "Failed to connect",
+                "Disconnected from",
+                "Write characteristic found",
+                "Notify characteristic found",
+                "Notification state updated"
+            ]
+            
+            if !importantEvents.contains(where: { message.contains($0) }) {
+                return
+            }
+        }
+        
+        // Always show dive-related logs and errors
+        if message.contains("🎯") || message.contains("📊") || message.contains("✅") || 
+           message.contains("❌") || level == .error {
+            print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
+            return
+        }
+        
+        // For other messages, only show info level and above by default
+        if level.rawValue >= LogLevel.info.rawValue {
+            print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
+        }
     }
     
     private func handleBLEDataLog(_ message: String, _ timestamp: String) {
@@ -71,9 +106,10 @@ class Logger {
             if let bytes = Int(bytesStr) {
                 totalBytesReceived += bytes
                 
-                // Print a summary every 5 packets or when exceeding certain thresholds
-                if dataCounter % 5 == 0 {
-                    print("📱 [\(timestamp)] BLE: Received \(dataCounter) packets (\(totalBytesReceived) bytes total)")
+                // Only print summary at the end or for significant events
+                // Removed the periodic logging
+                if message.contains("completed") || message.contains("error") {
+                    print("📱 [\(timestamp)] BLE: Total received: \(totalBytesReceived) bytes in \(dataCounter) packets")
                 }
             }
         }

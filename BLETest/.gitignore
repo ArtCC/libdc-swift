@@ -4,13 +4,17 @@
 ._*
 .Spotlight-V100
 .Trashes
+ehthumbs.db
+Thumbs.db
 
 # Xcode
-*.xcodeproj/
-*.xcworkspace/
 xcuserdata/
-*.xcscmblueprint
-*.xccheckout
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+.build/
 DerivedData/
 *.moved-aside
 *.pbxuser
@@ -21,3 +25,16 @@ DerivedData/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+/Packages
+/*.xcodeproj
+.netrc
+
+# Other
+*.log
+*.swp
+*.bak

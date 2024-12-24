@@ -1,13 +1,26 @@
 import Foundation
 
 @objc public class DeviceConfiguration: NSObject {
-    public enum DeviceFamily: UInt32 {
-        case shearwaterPredator = 655360  // (10 << 16)
-        case shearwaterPetrel = 655361    // (10 << 16) + 1
-        case suuntoEonSteel = 65541       // (1 << 16) + 5
+    public enum DeviceFamily {
+        case shearwaterPredator
+        case shearwaterPetrel
+        case suuntoEonSteel
         
-        var asDCFamily: UInt32 {
-            return self.rawValue
+        var asDCFamily: dc_family_t {
+            switch self {
+            case .shearwaterPredator: return DC_FAMILY_SHEARWATER_PREDATOR
+            case .shearwaterPetrel: return DC_FAMILY_SHEARWATER_PETREL
+            case .suuntoEonSteel: return DC_FAMILY_SUUNTO_EONSTEEL
+            }
+        }
+        
+        init?(dcFamily: dc_family_t) {
+            switch dcFamily {
+            case DC_FAMILY_SHEARWATER_PREDATOR: self = .shearwaterPredator
+            case DC_FAMILY_SHEARWATER_PETREL: self = .shearwaterPetrel
+            case DC_FAMILY_SUUNTO_EONSTEEL: self = .suuntoEonSteel
+            default: return nil
+            }
         }
         
         static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
@@ -87,28 +100,46 @@ import Foundation
     }
     
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
-        var familyUInt: UInt32 = 0
+        logDebug("Attempting to open BLE device: \(name) at address: \(deviceAddress)")
+        
+        var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
         let status = identify_ble_device(
             name.cString(using: .utf8),
-            &familyUInt,
+            &family,
             &model
         )
         
         guard status == DC_STATUS_SUCCESS else {
+            logError("Failed to identify device: \(status)")
             return false
         }
         
-        var deviceData = device_data_t()
+        logDebug("Device identified successfully - Family: \(family), Model: \(model)")
+        
+        // Allocate device data
+        let deviceData = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
+        deviceData.initialize(to: device_data_t())
+        logDebug("Allocated device data pointer")
+        
         let openStatus = open_ble_device(
-            &deviceData,
+            deviceData,
             deviceAddress.cString(using: .utf8),
-            dc_family_t(familyUInt),
+            family,
             model
         )
         
-        return openStatus == DC_STATUS_SUCCESS
+        if openStatus == DC_STATUS_SUCCESS {
+            logDebug("Successfully opened device")
+            // Set the device data pointer in BLEManager
+            CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+            return true
+        } else {
+            logError("Failed to open device: \(openStatus)")
+            deviceData.deallocate()
+            return false
+        }
     }
     
     public static func identifyDevice(name: String) -> (family: DeviceFamily, model: UInt32)? {
@@ -116,17 +147,17 @@ import Foundation
     }
     
     public static func identifyDeviceFromDescriptor(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        var familyUInt: UInt32 = 0
+        var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
         let status = identify_ble_device(
             name.cString(using: .utf8),
-            &familyUInt,
+            &family,
             &model
         )
         
         guard status == DC_STATUS_SUCCESS,
-              let deviceFamily = DeviceFamily(rawValue: familyUInt) else {
+              let deviceFamily = DeviceFamily(dcFamily: family) else {
             return nil
         }
         

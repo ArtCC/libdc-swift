@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "119"
             endingLineNumber = "119"
-            landmarkName = "identifyDeviceFromDescriptor(name:)"
+            landmarkName = "openBLEDevice(name:deviceAddress:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

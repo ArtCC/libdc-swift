@@ -130,6 +130,9 @@
 		CE4243992D1A4B03005BF888 /* ConnectedDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE4243982D1A4B03005BF888 /* ConnectedDeviceView.swift */; };
 		CE42439B2D1A4B28005BF888 /* BluetoothScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE42439A2D1A4B28005BF888 /* BluetoothScanView.swift */; };
 		CE42439D2D1A4B4F005BF888 /* DeviceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE42439C2D1A4B4F005BF888 /* DeviceRow.swift */; };
+		CE42439E2D1ABBE1005BF888 /* configuredc.h in Sources */ = {isa = PBXBuildFile; fileRef = CE4243782D1A48FD005BF888 /* configuredc.h */; };
+		CE42439F2D1ABBE1005BF888 /* configuredc.c in Sources */ = {isa = PBXBuildFile; fileRef = CE42437A2D1A48FD005BF888 /* configuredc.c */; };
+		CE4243A72D1AE36E005BF888 /* module.modulemap in Sources */ = {isa = PBXBuildFile; fileRef = CE4243A62D1AE36E005BF888 /* module.modulemap */; };
 		CEAE9DAE2D186D3000B0F6C4 /* fyi.md in Sources */ = {isa = PBXBuildFile; fileRef = CEAE9DAB2D186D3000B0F6C4 /* fyi.md */; };
 		CEAEEE112D19669C001B0C14 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAEEE102D19669C001B0C14 /* Logger.swift */; };
 /* End PBXBuildFile section */
@@ -365,6 +368,9 @@
 		CE4243982D1A4B03005BF888 /* ConnectedDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedDeviceView.swift; sourceTree = "<group>"; };
 		CE42439A2D1A4B28005BF888 /* BluetoothScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothScanView.swift; sourceTree = "<group>"; };
 		CE42439C2D1A4B4F005BF888 /* DeviceRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceRow.swift; path = BLETest/Sources/LibDCSwiftUI/Views/DeviceRow.swift; sourceTree = SOURCE_ROOT; };
+		CE4243A22D1AE25B005BF888 /* build-xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "build-xcframework.sh"; sourceTree = "<group>"; };
+		CE4243A52D1AE2B6005BF888 /* shim.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = shim.h; sourceTree = "<group>"; };
+		CE4243A62D1AE36E005BF888 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		CEAE9DAB2D186D3000B0F6C4 /* fyi.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = fyi.md; path = BLETest/fyi.md; sourceTree = "<group>"; };
 		CEAEEE102D19669C001B0C14 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Logger.swift; path = BLETest/Logger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -401,6 +407,7 @@
 		29ABFDBB2C36C72B0094DF48 /* BLETest */ = {
 			isa = PBXGroup;
 			children = (
+				CE4243A02D1AE1B9005BF888 /* scripts */,
 				CE4243892D1A48FD005BF888 /* Sources */,
 				29E99D1C2C592ABF00BB9070 /* libdc-swift */,
 				29E996BB2C58A19D00BB9070 /* BLEBridge */,
@@ -728,6 +735,7 @@
 		CE4243892D1A48FD005BF888 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				CE4243A42D1AE29B005BF888 /* Clibdivecomputer */,
 				CE4243952D1A4A5B005BF888 /* LibDCSwiftUI */,
 				CE42437C2D1A48FD005BF888 /* LibDCBridge */,
 				CE4243822D1A48FD005BF888 /* LibDCSwift */,
@@ -760,6 +768,31 @@
 				CE4243942D1A4A5B005BF888 /* Views */,
 			);
 			path = LibDCSwiftUI;
+			sourceTree = "<group>";
+		};
+		CE4243A02D1AE1B9005BF888 /* scripts */ = {
+			isa = PBXGroup;
+			children = (
+				CE4243A22D1AE25B005BF888 /* build-xcframework.sh */,
+			);
+			path = scripts;
+			sourceTree = "<group>";
+		};
+		CE4243A42D1AE29B005BF888 /* Clibdivecomputer */ = {
+			isa = PBXGroup;
+			children = (
+				CE4243A62D1AE36E005BF888 /* module.modulemap */,
+				CE4243A82D1AE452005BF888 /* include */,
+			);
+			path = Clibdivecomputer;
+			sourceTree = "<group>";
+		};
+		CE4243A82D1AE452005BF888 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				CE4243A52D1AE2B6005BF888 /* shim.h */,
+			);
+			path = include;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -840,6 +873,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE4243A72D1AE36E005BF888 /* module.modulemap in Sources */,
+				CE42439E2D1ABBE1005BF888 /* configuredc.h in Sources */,
+				CE42439F2D1ABBE1005BF888 /* configuredc.c in Sources */,
 				CE42438C2D1A4A2B005BF888 /* DeviceConfiguration.swift in Sources */,
 				CE42438D2D1A4A2B005BF888 /* DiveData.swift in Sources */,
 				CE42438E2D1A4A2B005BF888 /* DiveDataViewModel.swift in Sources */,

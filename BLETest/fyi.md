@@ -70,3 +70,36 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 - Added transfer rate monitoring
 - Immediate buffer processing of received data
 - Thread-safe buffer management with minimal blocking
+
+## Build Configuration Notes
+
+### Linking Configuration
+- Ensure all C functions are properly declared with extern "C" when used in C++ context
+- Key functions like `identify_ble_device` and `open_ble_device` must be included in build
+- BLEBridge and configuredc headers must be properly exported
+
+## Dependency Management
+
+### libdivecomputer Integration
+- Included as Git submodule in Vendors/libdivecomputer
+- Version locked to 0.8.0 via Package.resolved
+- Exposed through Clibdivecomputer module
+- Headers accessible via modular imports
+
+### Build Configuration
+- Minimum deployment targets: iOS 15, macOS 12
+- Uses module maps for C library integration
+- Automatic version management through SPM
+
+### Submodule Management
+- Update submodule: git submodule update --remote
+- Initial clone: git clone --recursive [repo-url]
+- Post-clone setup: git submodule init && git submodule update
+
+### Git Configuration
+- .gitignore configured to exclude:
+  - Xcode project files
+  - macOS system files
+  - Build artifacts
+  - Swift Package Manager files
+- Manual cleanup may be needed for previously tracked files

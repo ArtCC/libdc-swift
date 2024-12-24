@@ -28,6 +28,7 @@ private func diveCallback(
     guard let data = data,
           let contextPtr = userdata?.assumingMemoryBound(to: CallbackContext.self),
           let fingerprint = fingerprint else {
+        logError("❌ diveCallback: Required parameters are nil")
         return 0
     }
     
@@ -35,19 +36,19 @@ private func diveCallback(
     let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
     contextPtr.pointee.lastFingerprint = fingerprintData
     
+    // Increment counter before using it
     contextPtr.pointee.logCount += 1
     let currentDiveNumber = contextPtr.pointee.logCount
+    logInfo("📊 Processing dive #\(currentDiveNumber)")
     
-    // Update progress
+    // Update progress with the current dive number
     DispatchQueue.main.async {
         contextPtr.pointee.viewModel.updateProgress(
             current: currentDiveNumber,
             total: nil
         )
     }
-    
-    logInfo("Now parsing dive #\(currentDiveNumber)")
-    
+
     // Create a parser for this dive based on device family
     var parser: OpaquePointer?
     let context: OpaquePointer? = nil
@@ -66,11 +67,11 @@ private func diveCallback(
         }
         
         if rc == DC_STATUS_SUCCESS && parser != nil {
-            logDebug("Parser created successfully for dive #\(currentDiveNumber)")
-            
             // Get dive time
             var datetime = dc_datetime_t()
-            if dc_parser_get_datetime(parser, &datetime) == DC_STATUS_SUCCESS {
+            let datetimeStatus = dc_parser_get_datetime(parser, &datetime)
+            
+            if datetimeStatus == DC_STATUS_SUCCESS {
                 // Create sample data holder
                 struct SampleData {
                     var maxDepth: Double = 0.0
@@ -82,6 +83,7 @@ private func diveCallback(
                 let sampleCallback: dc_sample_callback_t = { type, valuePtr, userData in
                     guard let sampleDataPtr = userData?.assumingMemoryBound(to: SampleData.self),
                           let value = valuePtr?.pointee else {
+                        logError("❌ Sample callback: Required parameters are nil")
                         return
                     }
                     
@@ -99,6 +101,7 @@ private func diveCallback(
                 
                 // Process all samples
                 let samplesStatus = dc_parser_samples_foreach(parser, sampleCallback, &sampleData)
+                
                 if samplesStatus == DC_STATUS_SUCCESS {
                     DispatchQueue.main.async {
                         contextPtr.pointee.viewModel.addDive(
@@ -114,18 +117,18 @@ private func diveCallback(
                         )
                     }
                 } else {
-                    logError("Failed to process samples for dive #\(currentDiveNumber)")
+                    logError("❌ Failed to process samples for dive #\(currentDiveNumber)")
                 }
             } else {
-                logError("Failed to get datetime for dive #\(currentDiveNumber)")
+                logError("❌ Failed to get datetime for dive #\(currentDiveNumber)")
             }
             
             dc_parser_destroy(parser)
         } else {
-            logError("Failed to create parser for dive #\(currentDiveNumber), status: \(rc)")
+            logError("❌ Failed to create parser for dive #\(currentDiveNumber), status: \(rc)")
         }
     } else {
-        logError("Failed to identify device family for \(contextPtr.pointee.deviceName)")
+        logError("❌ Failed to identify device family for \(contextPtr.pointee.deviceName)")
     }
     
     return 1
@@ -220,12 +223,20 @@ struct ConnectedDeviceView: View {
     }
     
     private func retrieveDiveLogs() {
+        logInfo("🎯 Starting dive log retrieval")
         isRetrievingLogs = true
         diveViewModel.clear()
         diveViewModel.progress = .idle
         
-        guard let devicePtr = bluetoothManager.openedDeviceDataPtr,
-              let device = devicePtr.pointee.device else {
+        guard let devicePtr = bluetoothManager.openedDeviceDataPtr else {
+            logError("❌ Device data pointer is nil")
+            diveViewModel.setError("No device data pointer found.")
+            isRetrievingLogs = false
+            return
+        }
+        
+        guard let device = devicePtr.pointee.device else {
+            logError("❌ Device pointer is nil in device data")
             diveViewModel.setError("No opened device found.")
             isRetrievingLogs = false
             return
@@ -239,18 +250,22 @@ struct ConnectedDeviceView: View {
         
         // Run the enumeration in the background to keep the UI responsive
         DispatchQueue.global(qos: .userInitiated).async {
-            logInfo("Starting dive enumeration...")
+            logInfo("🔄 Starting dive enumeration...")
             let status = dc_device_foreach(device, diveCallback, &context)
             
             // Once done, update status & UI on the main thread
             DispatchQueue.main.async {
                 if status == DC_STATUS_SUCCESS {
                     if let lastFingerprint = context.lastFingerprint {
+                        logInfo("💾 Saving fingerprint")
                         diveViewModel.saveFingerprint(lastFingerprint)
                     }
                     diveViewModel.progress = .completed
+                    logInfo("✅ Dive enumeration completed successfully")
                 } else {
-                    diveViewModel.setError("Error enumerating dives: \(status)")
+                    let errorMsg = "Error enumerating dives: \(status)"
+                    logError("❌ \(errorMsg)")
+                    diveViewModel.setError(errorMsg)
                 }
                 isRetrievingLogs = false
             }

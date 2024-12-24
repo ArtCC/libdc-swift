@@ -240,9 +240,9 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
 }
 
 dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model) {
-    dc_status_t rc = DC_STATUS_SUCCESS;
     dc_iterator_t *iterator = NULL;
     dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
 
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
@@ -252,7 +252,7 @@ dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned 
     while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
         const char *product = dc_descriptor_get_product(descriptor);
         if (product && strstr(name, product) != NULL) {
-            *family = dc_descriptor_get_type(descriptor);
+            *family = (dc_family_t)dc_descriptor_get_type(descriptor);
             *model = dc_descriptor_get_model(descriptor);
             dc_descriptor_free(descriptor);
             dc_iterator_free(iterator);
@@ -263,4 +263,45 @@ dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned 
 
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
+}
+
+dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model) {
+    dc_status_t rc;
+    dc_descriptor_t *descriptor = NULL;
+    dc_iterator_t *iterator = NULL;
+
+    // Create context if needed
+    if (!data->context) {
+        rc = dc_context_new(&data->context);
+        if (rc != DC_STATUS_SUCCESS) {
+            return rc;
+        }
+    }
+
+    // Find descriptor matching family and model
+    rc = dc_descriptor_iterator(&iterator);
+    if (rc != DC_STATUS_SUCCESS) {
+        return rc;
+    }
+
+    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+        if (dc_descriptor_get_type(descriptor) == family &&
+            dc_descriptor_get_model(descriptor) == model) {
+            break;
+        }
+        dc_descriptor_free(descriptor);
+        descriptor = NULL;
+    }
+
+    dc_iterator_free(iterator);
+
+    if (!descriptor) {
+        return DC_STATUS_UNSUPPORTED;
+    }
+
+    // Use the existing function to open the device
+    rc = open_ble_device_with_descriptor(data, devaddr, descriptor);
+    dc_descriptor_free(descriptor);
+
+    return rc;
 } 

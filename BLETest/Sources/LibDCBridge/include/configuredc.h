@@ -5,6 +5,12 @@
 #include <libdivecomputer/common.h>
 #include <libdivecomputer/iostream.h>
 #include <libdivecomputer/context.h>
+#include <libdivecomputer/descriptor.h>
+#include <libdivecomputer/device.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct {
     dc_device_t *device;
@@ -25,5 +31,9 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
 dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
 dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
 dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CONFIGUREDC_H */ 

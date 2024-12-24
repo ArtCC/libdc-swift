@@ -24,7 +24,11 @@ import Combine
     private let frameMarker: UInt8 = 0x7E
     
     // Add the device data property
-    public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>?
+    public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>? {
+        didSet {
+            logDebug("Device data pointer \(openedDeviceDataPtr == nil ? "cleared" : "set")")
+        }
+    }
     
     private var connectionCompletion: ((Bool) -> Void)?
     
@@ -104,41 +108,6 @@ import Combine
         
         return frameToReturn
     }
-    
-    @objc public func readData(_ size: Int) -> Data? {
-        print("ReadData requested \(size) bytes. Currently buffered: \(receivedData.count) bytes")
-        
-        let startTime = Date()
-        let timeout: TimeInterval = 10
-        let checkInterval: TimeInterval = 0.01
-        
-        while true {
-            var dataToReturn: Data?
-            
-            queue.sync {
-                if receivedData.count >= size {
-                    print("Have enough data (\(receivedData.count) bytes) to satisfy read request of \(size) bytes")
-                    dataToReturn = receivedData.prefix(size)
-                    receivedData.removeSubrange(0..<size)
-                }
-            }
-            
-            if let data = dataToReturn {
-                print("Returning \(data.count) bytes: \(data.hexEncodedString())")
-                return data
-            }
-            
-            // Check for timeout
-            let elapsed = Date().timeIntervalSince(startTime)
-            if elapsed > timeout {
-                print("Read timeout after \(elapsed) seconds. Buffer contains: \(receivedData.hexEncodedString())")
-                return nil
-            }
-            
-            // Wait a shorter time for more data
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: checkInterval))
-        }
-    }
 
     @objc public func writeData(_ data: Data) -> Bool {
         guard let peripheral = self.peripheral,
@@ -155,16 +124,21 @@ import Combine
             receivedData.removeAll()
         }
         
-        // Update the cleanup code
         if let devicePtr = self.openedDeviceDataPtr {
+            logDebug("Closing device data pointer")
             if devicePtr.pointee.device != nil {
+                logDebug("Closing device")
                 dc_device_close(devicePtr.pointee.device)
             }
+            logDebug("Deallocating device data pointer")
             devicePtr.deallocate()
             self.openedDeviceDataPtr = nil
+        } else {
+            logDebug("No device data pointer to close")
         }
         
         if let connectedDevice = self.connectedDevice {
+            logDebug("Disconnecting peripheral")
             centralManager.cancelPeripheralConnection(connectedDevice)
         }
     }

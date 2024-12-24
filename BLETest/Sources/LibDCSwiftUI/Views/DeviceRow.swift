@@ -33,7 +33,7 @@ struct DeviceRow: View {
                     showConnectedDeviceSheet = false
                 } else {
                     logInfo("Initiating connect for \(device.name ?? "unknown device")")
-                    connectToDevice(device)
+                    connectToDevice()
                 }
             }) {
                 if isConnecting {
@@ -47,46 +47,24 @@ struct DeviceRow: View {
         }
     }
     
-    private func connectToDevice(_ device: CBPeripheral) {
-        isConnecting = true
+    private func connectToDevice() {
+        logInfo("Initiating connect for \(device.name ?? "Unknown Device")")
         
-        guard let deviceName = device.name else {
-            logError("Device has no name")
-            isConnecting = false
-            return
-        }
+        let deviceAddress = device.identifier.uuidString
         
-        let success = DeviceConfiguration.openBLEDevice(
-            name: deviceName,
-            deviceAddress: device.identifier.uuidString
-        )
-        
-        if success {
-            // Allocate device_data_t on the heap
-            let deviceDataPtr = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
-            deviceDataPtr.initialize(to: device_data_t())
+        // Attempt to identify and open the device
+        if DeviceConfiguration.openBLEDevice(name: device.name ?? "", deviceAddress: deviceAddress) {
+            logInfo("Successfully opened \(device.name ?? "Unknown Device")")
             
-            // Set the fingerprint if we have one
-            if let fingerprint = diveViewModel.lastFingerprint {
-                fingerprint.withUnsafeBytes { buffer in
-                    let status = dc_device_set_fingerprint(
-                        deviceDataPtr.pointee.device,
-                        buffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        UInt32(buffer.count)
-                    )
-                    if status != DC_STATUS_SUCCESS {
-                        logError("Failed to set fingerprint")
-                    }
-                }
+            // Verify device data pointer is set
+            if bluetoothManager.openedDeviceDataPtr == nil {
+                logError("Device opened but device data pointer is nil")
+                return
             }
             
-            bluetoothManager.openedDeviceDataPtr = deviceDataPtr
-            logInfo("Successfully opened \(deviceName)")
             showConnectedDeviceSheet = true
         } else {
-            logError("Failed to open \(deviceName)")
+            logError("Failed to open device")
         }
-        
-        isConnecting = false
     }
 }

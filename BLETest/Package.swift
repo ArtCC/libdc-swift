@@ -18,47 +18,37 @@ let package = Package(
             name: "LibDCBridge",
             targets: ["LibDCBridge"])
     ],
-    dependencies: [],
     targets: [
-        // Main LibDCSwift target
+        .target(
+            name: "Clibdivecomputer",
+            dependencies: [],
+            path: "Sources/Clibdivecomputer",
+            publicHeadersPath: "include",
+            cSettings: [
+                .headerSearchPath("../../libdivecomputer/include")
+            ]
+        ),
         .target(
             name: "LibDCSwift",
-            dependencies: ["LibDCBridge"],
-            path: "Sources/LibDCSwift",
-            cSettings: [
-                .headerSearchPath("../LibDCBridge/include")
-            ]),
-        
-        // SwiftUI components
+            dependencies: ["LibDCBridge", "Clibdivecomputer"],
+            path: "Sources/LibDCSwift"
+        ),
         .target(
             name: "LibDCSwiftUI",
             dependencies: ["LibDCSwift"],
-            path: "Sources/LibDCSwiftUI",
-            sources: [
-                "Views/BluetoothScanView.swift",
-                "Views/ConnectedDeviceView.swift",
-                "Views/DeviceRow.swift"
-            ]),
-            
-        // Objective-C bridge target
+            path: "Sources/LibDCSwiftUI"
+        ),
         .target(
             name: "LibDCBridge",
-            dependencies: [],
+            dependencies: ["Clibdivecomputer"],
             path: "Sources/LibDCBridge",
-            sources: ["src"],
+            sources: ["src/configuredc.c", "src/BLEBridge.m"],
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
-                .headerSearchPath("src"),
-                .headerSearchPath("$(SRCROOT)/libdivecomputer/include")
-            ],
-            swiftSettings: [
-                .unsafeFlags(["-I$(SRCROOT)/Sources/LibDCBridge/include"])
-            ],
-            linkerSettings: [
-                .linkedLibrary("libdivecomputer")
-            ]),
-            
+                .headerSearchPath("../../libdivecomputer/include")
+            ]
+        ),
         // Test targets
         .testTarget(
             name: "LibDCSwiftTests",

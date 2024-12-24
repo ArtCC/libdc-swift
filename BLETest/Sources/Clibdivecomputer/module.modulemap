@@ -1,0 +1,5 @@
+module Clibdivecomputer [system] {
+    header "shim.h"
+    link "divecomputer"
+    export *
+}
