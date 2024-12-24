@@ -38,3 +38,8 @@ Package.resolved
 *.log
 *.swp
 *.bak
+
+# Xcode
+*.xcworkspace
+*.xcodeproj
+.swiftpm/
