@@ -8,11 +8,14 @@
 #ifndef BLETest_Bridging_Header_h
 #define BLETest_Bridging_Header_h
 
-#include "BLEBridge/BLEBridge.h"
-#import "configuredc.h"
-#import <libdivecomputer/device.h>
-#import <libdivecomputer/common.h>
-#import <libdivecomputer/parser.h>
+// Include local headers
+#include "BLEBridge.h"
+#include "configuredc.h"
+
+// Include libdivecomputer headers
+#include <libdivecomputer/device.h>
+#include <libdivecomputer/common.h>
+#include <libdivecomputer/parser.h>
 
 // Define the sample callback type with correct signature
 typedef void (*dc_sample_callback_t)(dc_sample_type_t type, 

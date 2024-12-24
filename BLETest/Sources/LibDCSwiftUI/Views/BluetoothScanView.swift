@@ -1,3 +1,10 @@
+//
+//  BluetoothScanView.swift
+//  BLETest
+//
+//  Created by User on 24/12/2024.
+//
+
 import SwiftUI
 import CoreBluetooth
 import Combine
@@ -19,7 +26,7 @@ struct BluetoothScanView: View {
             List {
                 Section(header: Text("My Devices")) {
                     if let connectedDevice = bluetoothManager.connectedDevice {
-                        DeviceRow(device: connectedDevice, 
+                        DeviceRow(device: connectedDevice,
                                 bluetoothManager: bluetoothManager,
                                 diveViewModel: diveViewModel,
                                 showConnectedDeviceSheet: $showingConnectedDeviceSheet)
@@ -36,7 +43,7 @@ struct BluetoothScanView: View {
                 ) {
                     ForEach(filteredPeripherals, id: \.identifier) { device in
                         if device != bluetoothManager.connectedDevice {
-                            DeviceRow(device: device, 
+                            DeviceRow(device: device,
                                     bluetoothManager: bluetoothManager,
                                     diveViewModel: diveViewModel,
                                     showConnectedDeviceSheet: $showingConnectedDeviceSheet)
@@ -63,7 +70,7 @@ struct BluetoothScanView: View {
             }
             .navigationDestination(isPresented: $showingConnectedDeviceSheet) {
                 if let connectedDevice = bluetoothManager.connectedDevice {
-                    ConnectedDeviceView(device: connectedDevice, 
+                    ConnectedDeviceView(device: connectedDevice,
                                       bluetoothManager: bluetoothManager,
                                       diveViewModel: diveViewModel)
                 }

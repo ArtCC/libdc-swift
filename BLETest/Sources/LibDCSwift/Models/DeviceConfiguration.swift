@@ -1,111 +1,112 @@
 import Foundation
 
 @objc public class DeviceConfiguration: NSObject {
-    public enum DeviceFamily: Int {
-        case suuntoEonSteel = 31    // DC_FAMILY_SUUNTO_EONSTEEL
-        case shearwaterPetrel = 32  // DC_FAMILY_SHEARWATER_PETREL 
-        case shearwaterPredator = 33 // DC_FAMILY_SHEARWATER_PREDATOR
+    public enum DeviceFamily: UInt32 {
+        case shearwaterPredator = 655360  // (10 << 16)
+        case shearwaterPetrel = 655361    // (10 << 16) + 1
+        case suuntoEonSteel = 65541       // (1 << 16) + 5
         
-        // Model numbers from descriptor.c
-        public enum SuuntoModel: UInt32 {
-            case eonSteel = 0
-            case eonCore = 1
-            case d5 = 2
-            case eonSteelBlack = 3
+        var asDCFamily: UInt32 {
+            return self.rawValue
         }
         
-        public enum ShearwaterPetrelModel: UInt32 {
-            case petrel = 3
-            case petrel2 = 3
-            case nerd = 4
-            case perdix = 5
-            case perdixAI = 6
-            case nerd2 = 7
-            case teric = 8
-            case peregrine = 9
-            case petrel3 = 10
-            case perdix2 = 11
-            case tern = 12
-            case peregrineTX = 13
-        }
-        
-        public enum ShearwaterPredatorModel: UInt32 {
-            case predator = 2
-        }
-        
-        public static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
+        static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
             let lowercaseName = name.lowercased()
             
             // Suunto models
             if lowercaseName.contains("eon steel black") {
-                return (.suuntoEonSteel, SuuntoModel.eonSteelBlack.rawValue)
+                return (.suuntoEonSteel, SuuntoModel.eonSteelBlack)
             } else if lowercaseName.contains("eon steel") {
-                return (.suuntoEonSteel, SuuntoModel.eonSteel.rawValue)
+                return (.suuntoEonSteel, SuuntoModel.eonSteel)
             } else if lowercaseName.contains("eon core") {
-                return (.suuntoEonSteel, SuuntoModel.eonCore.rawValue)
+                return (.suuntoEonSteel, SuuntoModel.eonCore)
             } else if lowercaseName.contains("d5") {
-                return (.suuntoEonSteel, SuuntoModel.d5.rawValue)
+                return (.suuntoEonSteel, SuuntoModel.d5)
             }
             
             // Shearwater Petrel models
             else if lowercaseName.contains("petrel 3") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel3.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel3)
             } else if lowercaseName.contains("petrel 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel2.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel2)
             } else if lowercaseName.contains("petrel") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel)
             } else if lowercaseName.contains("perdix 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix2.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix2)
             } else if lowercaseName.contains("perdix ai") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdixAI.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.perdixAI)
             } else if lowercaseName.contains("perdix") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix)
             } else if lowercaseName.contains("nerd 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd2.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd2)
             } else if lowercaseName.contains("nerd") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd)
             } else if lowercaseName.contains("teric") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.teric.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.teric)
             } else if lowercaseName.contains("peregrine tx") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrineTX.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrineTX)
             } else if lowercaseName.contains("peregrine") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrine.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrine)
             } else if lowercaseName.contains("tern") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.tern.rawValue)
+                return (.shearwaterPetrel, ShearwaterPetrelModel.tern)
             }
             
             // Shearwater Predator models
             else if lowercaseName.contains("predator") {
-                return (.shearwaterPredator, ShearwaterPredatorModel.predator.rawValue)
+                return (.shearwaterPredator, ShearwaterPredatorModel.predator)
             }
             
             return nil
         }
     }
     
+    public struct SuuntoModel {
+        public static let eonSteel: UInt32 = 0
+        public static let eonCore: UInt32 = 1
+        public static let d5: UInt32 = 2
+        public static let eonSteelBlack: UInt32 = 3
+    }
+    
+    public struct ShearwaterPetrelModel {
+        public static let petrel: UInt32 = 3
+        public static let petrel2: UInt32 = 3  
+        public static let nerd: UInt32 = 4
+        public static let perdix: UInt32 = 5
+        public static let perdixAI: UInt32 = 6
+        public static let nerd2: UInt32 = 7
+        public static let teric: UInt32 = 8
+        public static let peregrine: UInt32 = 9
+        public static let petrel3: UInt32 = 10
+        public static let perdix2: UInt32 = 11
+        public static let tern: UInt32 = 12
+        public static let peregrineTX: UInt32 = 13
+    }
+    
+    public struct ShearwaterPredatorModel {
+        public static let predator: UInt32 = 2
+    }
+    
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
-        var family: dc_family_t = 0
+        var familyUInt: UInt32 = 0
         var model: UInt32 = 0
-        var descriptor: OpaquePointer? = nil
         
-        // Get the descriptor for this device
         let status = identify_ble_device(
             name.cString(using: .utf8),
-            &family,
-            &model,
-            &descriptor
+            &familyUInt,
+            &model
         )
         
-        guard status == DC_STATUS_SUCCESS, let descriptor = descriptor else {
+        guard status == DC_STATUS_SUCCESS else {
             return false
         }
         
-        // Open device using descriptor
         var deviceData = device_data_t()
-        let openStatus = open_ble_device_with_descriptor(&deviceData, deviceAddress.cString(using: .utf8), descriptor)
-        
-        // Free the descriptor
-        dc_descriptor_free(descriptor)
+        let openStatus = open_ble_device(
+            &deviceData,
+            deviceAddress.cString(using: .utf8),
+            dc_family_t(familyUInt),
+            model
+        )
         
         return openStatus == DC_STATUS_SUCCESS
     }
@@ -115,17 +116,17 @@ import Foundation
     }
     
     public static func identifyDeviceFromDescriptor(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        var family: dc_family_t = 0
+        var familyUInt: UInt32 = 0
         var model: UInt32 = 0
         
         let status = identify_ble_device(
             name.cString(using: .utf8),
-            &family,
+            &familyUInt,
             &model
         )
         
         guard status == DC_STATUS_SUCCESS,
-              let deviceFamily = DeviceFamily(rawValue: Int(family)) else {
+              let deviceFamily = DeviceFamily(rawValue: familyUInt) else {
             return nil
         }
         

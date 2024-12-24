@@ -1,5 +1,13 @@
+//
+//  DeviceRow.swift
+//  BLETest
+//
+//  Created by User on 24/12/2024.
+//
+
+import Foundation
 import SwiftUI
-import LibDCSwift
+import CoreBluetooth
 
 struct DeviceRow: View {
     let device: CBPeripheral

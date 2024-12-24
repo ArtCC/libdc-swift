@@ -2,9 +2,148 @@
 #include "BLEBridge.h"
 #include <libdivecomputer/device.h>
 #include <libdivecomputer/descriptor.h>
+#include <libdivecomputer/iostream.h>
+#include "iostream-private.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+/*--------------------------------------------------------------------
+ * BLE stream structures
+ *------------------------------------------------------------------*/
+typedef struct ble_stream_t {
+    dc_iostream_t base;       // The underlying iostream object
+    ble_object_t *ble_object; // Our pointer to the BLE object
+} ble_stream_t;
+
+/*--------------------------------------------------------------------
+ * Forward declarations for our custom vtable
+ *------------------------------------------------------------------*/
+static dc_status_t ble_stream_set_timeout   (dc_iostream_t *iostream, int timeout);
+static dc_status_t ble_stream_read          (dc_iostream_t *iostream, void *data, size_t size, size_t *actual);
+static dc_status_t ble_stream_write         (dc_iostream_t *iostream, const void *data, size_t size, size_t *actual);
+static dc_status_t ble_stream_ioctl         (dc_iostream_t *iostream, unsigned int request, void *data_, size_t size_);
+static dc_status_t ble_stream_sleep         (dc_iostream_t *iostream, unsigned int milliseconds);
+static dc_status_t ble_stream_close         (dc_iostream_t *iostream);
+
+/*--------------------------------------------------------------------
+ * Build our custom vtable
+ *------------------------------------------------------------------*/
+static const dc_iostream_vtable_t ble_iostream_vtable = {
+    .size          = sizeof(dc_iostream_vtable_t),
+    .set_timeout   = ble_stream_set_timeout,
+    .set_break     = NULL,
+    .set_dtr       = NULL,
+    .set_rts       = NULL,
+    .get_lines     = NULL,
+    .get_available = NULL,
+    .configure     = NULL,
+    .poll          = NULL,
+    .read          = ble_stream_read,
+    .write         = ble_stream_write,
+    .ioctl         = ble_stream_ioctl,
+    .flush         = NULL,
+    .purge         = NULL,
+    .sleep         = ble_stream_sleep,
+    .close         = ble_stream_close,
+};
+
+/*--------------------------------------------------------------------
+ * ble_iostream_create implementation
+ *------------------------------------------------------------------*/
+static dc_status_t ble_iostream_create(dc_iostream_t **out, dc_context_t *context, ble_object_t *bleobj)
+{
+    ble_stream_t *stream = (ble_stream_t *) malloc(sizeof(ble_stream_t));
+    if (!stream) {
+        if (context) {
+            printf("ble_iostream_create: no memory");
+        }
+        return DC_STATUS_NOMEMORY;
+    }
+    memset(stream, 0, sizeof(*stream));
+
+    stream->base.vtable = &ble_iostream_vtable;
+    stream->base.context = context;
+    stream->base.transport = DC_TRANSPORT_BLE;
+    stream->ble_object = bleobj;
+
+    *out = (dc_iostream_t *)stream;
+    return DC_STATUS_SUCCESS;
+}
+
+/*--------------------------------------------------------------------
+ * Vtable implementation functions
+ *------------------------------------------------------------------*/
+static dc_status_t ble_stream_set_timeout(dc_iostream_t *iostream, int timeout)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    return ble_set_timeout(s->ble_object, timeout);
+}
+
+static dc_status_t ble_stream_read(dc_iostream_t *iostream, void *data, size_t size, size_t *actual)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    return ble_read(s->ble_object, data, size, actual);
+}
+
+static dc_status_t ble_stream_write(dc_iostream_t *iostream, const void *data, size_t size, size_t *actual)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    return ble_write(s->ble_object, data, size, actual);
+}
+
+static dc_status_t ble_stream_ioctl(dc_iostream_t *iostream, unsigned int request, void *data_, size_t size_)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    return ble_ioctl(s->ble_object, request, data_, size_);
+}
+
+static dc_status_t ble_stream_sleep(dc_iostream_t *iostream, unsigned int milliseconds)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    return ble_sleep(s->ble_object, milliseconds);
+}
+
+static dc_status_t ble_stream_close(dc_iostream_t *iostream)
+{
+    ble_stream_t *s = (ble_stream_t *) iostream;
+    dc_status_t rc = ble_close(s->ble_object);
+    freeBLEObject(s->ble_object);
+    free(s);
+    return rc;
+}
+
+/*--------------------------------------------------------------------
+ * Public functions
+ *------------------------------------------------------------------*/
+dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata) {
+    // Initialize the Swift BLE manager singletons
+    initializeBLEManager();
+
+    // Create a BLE object
+    ble_object_t *io = createBLEObject();
+    if (io == NULL) {
+        printf("ble_packet_open: Failed to create BLE object\n");
+        return DC_STATUS_NOMEMORY;
+    }
+
+    // Connect to the device
+    if (!connectToBLEDevice(io, devaddr)) {
+        printf("ble_packet_open: Failed to connect to device\n");
+        freeBLEObject(io);
+        return DC_STATUS_IO;
+    }
+
+    // Create a custom BLE iostream
+    dc_status_t status = ble_iostream_create(iostream, context, io);
+    if (status != DC_STATUS_SUCCESS) {
+        printf("ble_packet_open: Failed to create iostream\n");
+        freeBLEObject(io);
+        return status;
+    }
+
+    return DC_STATUS_SUCCESS;
+}
 
 static void event_cb(dc_device_t *device, dc_event_type_t event, const void *data, void *userdata)
 {

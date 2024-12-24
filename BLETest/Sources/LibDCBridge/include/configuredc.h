@@ -21,6 +21,7 @@ typedef struct {
     dc_event_clock_t clock;
 } device_data_t;
 
+dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata);
 dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
 dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
 dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor);
