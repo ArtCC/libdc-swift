@@ -36,7 +36,10 @@ let package = Package(
         .target(
             name: "LibDCSwiftUI",
             dependencies: ["LibDCSwift"],
-            path: "Sources/LibDCSwiftUI"
+            path: "Sources/LibDCSwiftUI",
+            resources: [
+                .copy("Resources/Info.plist")
+            ]
         ),
         .target(
             name: "LibDCBridge",

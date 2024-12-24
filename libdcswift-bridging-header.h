@@ -1,12 +1,5 @@
-//
-//  BLETest-Bridging-Header.h
-//  BLETest
-//
-//  Created by Latisha Besariani on 05/07/24.
-//
-
-#ifndef BLETest_Bridging_Header_h
-#define BLETest_Bridging_Header_h
+#ifndef libdcswift_bridging_header_h
+#define libdcswift_bridging_header_h
 
 // Include local headers
 #include "BLEBridge.h"
@@ -27,4 +20,4 @@ typedef int (*dc_dive_callback_t)(const unsigned char *data, unsigned int size,
                                 const unsigned char *fingerprint, unsigned int fsize,
                                 void *userdata);
 
-#endif /* BLETest_Bridging_Header_h */
+#endif
