@@ -168,3 +168,22 @@ When distributing as a package:
 - Core:
   - BLEManager.swift: Bluetooth communication
   - Logger.swift: Logging functionality
+
+## Observable Properties in CoreBluetoothManager
+- @Published properties:
+  - centralManager
+  - peripheral
+  - discoveredPeripherals
+  - isPeripheralReady
+  - connectedDevice
+  - isScanning
+  - openedDeviceDataPtr (with willSet observer)
+- Properties are observable in SwiftUI views
+- Changes trigger view updates automatically
+- Unsafe pointer properties need special handling for observation
+
+## Objective-C Interop
+- CoreBluetoothManager needs @objc(CoreBluetoothManager) attribute for proper Objective-C visibility
+- BLEBridge.h must declare the Swift class with @class
+- Ensure Swift class name matches Objective-C expectations
+- All methods called from Objective-C must have @objc attribute

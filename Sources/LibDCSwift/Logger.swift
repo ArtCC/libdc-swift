@@ -1,12 +1,12 @@
 import Foundation
 
-enum LogLevel: Int {
+public enum LogLevel: Int {
     case debug = 0
     case info = 1
     case warning = 2
     case error = 3
     
-    var prefix: String {
+    public var prefix: String {
         switch self {
         case .debug: return "🔍 DEBUG"
         case .info: return "ℹ️ INFO"
@@ -16,8 +16,8 @@ enum LogLevel: Int {
     }
 }
 
-class Logger {
-    static let shared = Logger()
+public class Logger {
+    public static let shared = Logger()
     private var isEnabled = true
     private var minLevel: LogLevel = .debug
     public var shouldShowRawData = false  // Toggle for full hex dumps
@@ -30,16 +30,16 @@ class Logger {
         return formatter
     }()
     
-    var minimumLogLevel: LogLevel {
+    public var minimumLogLevel: LogLevel {
         get { minLevel }
         set { minLevel = newValue }
     }
     
-    func setMinLevel(_ level: LogLevel) {
+    public func setMinLevel(_ level: LogLevel) {
         minLevel = level
     }
     
-    func log(_ message: String, level: LogLevel = .debug, file: String = #file, function: String = #function) {
+    public func log(_ message: String, level: LogLevel = .debug, file: String = #file, function: String = #function) {
         guard isEnabled && level.rawValue >= minLevel.rawValue else { return }
         
         let timestamp = dateFormatter.string(from: Date())
@@ -107,7 +107,6 @@ class Logger {
                 totalBytesReceived += bytes
                 
                 // Only print summary at the end or for significant events
-                // Removed the periodic logging
                 if message.contains("completed") || message.contains("error") {
                     print("📱 [\(timestamp)] BLE: Total received: \(totalBytesReceived) bytes in \(dataCounter) packets")
                 }
@@ -134,29 +133,29 @@ class Logger {
         return formatted
     }
     
-    func setShowRawData(_ show: Bool) {
+    public func setShowRawData(_ show: Bool) {
         shouldShowRawData = show
     }
     
-    func resetDataCounters() {
+    public func resetDataCounters() {
         dataCounter = 0
         totalBytesReceived = 0
     }
 }
 
 // Global convenience functions
-func logDebug(_ message: String, file: String = #file, function: String = #function) {
+public func logDebug(_ message: String, file: String = #file, function: String = #function) {
     Logger.shared.log(message, level: .debug, file: file, function: function)
 }
 
-func logInfo(_ message: String, file: String = #file, function: String = #function) {
+public func logInfo(_ message: String, file: String = #file, function: String = #function) {
     Logger.shared.log(message, level: .info, file: file, function: function)
 }
 
-func logWarning(_ message: String, file: String = #file, function: String = #function) {
+public func logWarning(_ message: String, file: String = #file, function: String = #function) {
     Logger.shared.log(message, level: .warning, file: file, function: function)
 }
 
-func logError(_ message: String, file: String = #file, function: String = #function) {
+public func logError(_ message: String, file: String = #file, function: String = #function) {
     Logger.shared.log(message, level: .error, file: file, function: function)
 } 

@@ -2,7 +2,8 @@ import Foundation
 import CoreBluetooth
 import Combine
 
-@objc public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+@objc(CoreBluetoothManager)
+public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc public static let shared = CoreBluetoothManager()
     @objc private var timeout: Int = -1 // default to no timeout
 
@@ -23,11 +24,23 @@ import Combine
     private let queue = DispatchQueue(label: "com.blemanager.queue")
     private let frameMarker: UInt8 = 0x7E
     
-    // Add the device data property
+    private var _deviceDataPtr: UnsafeMutablePointer<device_data_t>?
+    
     public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>? {
-        didSet {
-            logDebug("Device data pointer \(openedDeviceDataPtr == nil ? "cleared" : "set")")
+        get {
+            _deviceDataPtr
         }
+        set {
+            objectWillChange.send()
+            _deviceDataPtr = newValue
+            logDebug("Device data pointer \(newValue == nil ? "cleared" : "set")")
+        }
+    }
+    
+    @Published private var deviceDataPtrChanged = false
+    
+    public func hasValidDeviceDataPtr() -> Bool {
+        return openedDeviceDataPtr != nil
     }
     
     private var connectionCompletion: ((Bool) -> Void)?
