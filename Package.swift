@@ -46,7 +46,7 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
-                .headerSearchPath("../../libdivecomputer/include")
+                .headerSearchPath("../libdivecomputer/include")
             ]
         ),
         // Test targets
