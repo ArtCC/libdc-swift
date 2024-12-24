@@ -8,6 +8,7 @@
 #ifndef LIBDC_SHIM_H
 #define LIBDC_SHIM_H
 
+// Use absolute paths with SRCROOT
 #include <libdivecomputer/common.h>
 #include <libdivecomputer/context.h>
 #include <libdivecomputer/descriptor.h>

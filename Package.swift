@@ -1,44 +1,33 @@
-// swift-tools-version:5.7
+// swift-tools-version:5.10
 import PackageDescription
 
 let package = Package(
     name: "LibDCSwift",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v12)
+        .iOS(.v17)
     ],
     products: [
         .library(
             name: "LibDCSwift",
-            targets: ["LibDCSwift"]),
-        .library(
-            name: "LibDCSwiftUI", 
-            targets: ["LibDCSwiftUI"]),
+            targets: ["LibDCSwift"]
+        ),
         .library(
             name: "LibDCBridge",
-            targets: ["LibDCBridge"])
+            targets: ["LibDCBridge"]
+        )
     ],
     targets: [
         .target(
             name: "Clibdivecomputer",
-            dependencies: [],
-            path: "Sources/Clibdivecomputer",
+            path: "libdivecomputer",
+            exclude: [
+                "doc",
+                "m4"
+            ],
             publicHeadersPath: "include",
             cSettings: [
-                .headerSearchPath("../../libdivecomputer/include")
-            ]
-        ),
-        .target(
-            name: "LibDCSwift",
-            dependencies: ["LibDCBridge", "Clibdivecomputer"],
-            path: "Sources/LibDCSwift"
-        ),
-        .target(
-            name: "LibDCSwiftUI",
-            dependencies: ["LibDCSwift"],
-            path: "Sources/LibDCSwiftUI",
-            resources: [
-                .copy("Resources/Info.plist")
+                .headerSearchPath("include/libdivecomputer"),
+                .headerSearchPath("src")
             ]
         ),
         .target(
@@ -49,27 +38,21 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
-                .headerSearchPath("../Clibdivecomputer/include"),
-                .headerSearchPath("../libdivecomputer/include")
+                .headerSearchPath("../libdivecomputer/include"),
+                .headerSearchPath("../libdivecomputer/src"),
+                .define("HAVE_CONFIG_H")
             ],
             swiftSettings: [
                 .define("PRODUCT_MODULE_NAME=libdc_swift")
             ]
         ),
-        // Test targets
-        .testTarget(
-            name: "LibDCSwiftTests",
-            dependencies: ["LibDCSwift"],
-            path: "Tests/LibDCSwiftTests"),
-            
-        .testTarget(
-            name: "LibDCSwiftUITests", 
-            dependencies: ["LibDCSwiftUI"],
-            path: "Tests/LibDCSwiftUITests"),
-            
-        .testTarget(
-            name: "LibDCBridgeTests",
-            dependencies: ["LibDCBridge"],
-            path: "Tests/LibDCBridgeTests")
+        .target(
+            name: "LibDCSwift",
+            dependencies: ["LibDCBridge", "Clibdivecomputer"],
+            path: "Sources/LibDCSwift",
+            swiftSettings: [
+                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
+            ]
+        )
     ]
 ) 

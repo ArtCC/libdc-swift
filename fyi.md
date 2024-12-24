@@ -103,3 +103,31 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
   - Build artifacts
   - Swift Package Manager files
 - Manual cleanup may be needed for previously tracked files
+
+## Development and Distribution
+
+### Package Structure
+- LibDCSwift: Main Swift library for dive computer communication
+- LibDCBridge: Objective-C bridge to libdivecomputer
+- Clibdivecomputer: C library wrapper
+
+### Test Applications
+- LibDCSwiftUI: Built-in test app (DEBUG builds only)
+- Examples/TestApp: Standalone test app project
+
+### Headers
+- libdcswift-bridging-header.h: Main bridging header
+- BLEBridge.h: Bluetooth functionality bridge
+- configuredc.h: Device configuration bridge
+
+### Development
+1. Open `libdc-swift.xcworkspace`
+2. Both package and test app are available
+3. Use built-in test app for quick testing
+4. Use standalone test app for full app testing
+
+### Distribution
+When distributing as a package:
+- Only LibDCSwift and LibDCBridge are exposed
+- Test apps are excluded
+- Headers are properly bundled
