@@ -6,18 +6,18 @@ import Combine
     @objc public static let shared = CoreBluetoothManager()
     @objc private var timeout: Int = -1 // default to no timeout
 
-    @Published var centralManager: CBCentralManager!
-    @Published var peripheral: CBPeripheral?
-    @Published var discoveredPeripherals: [CBPeripheral] = []
+    @Published public var centralManager: CBCentralManager!
+    @Published public var peripheral: CBPeripheral?
+    @Published public var discoveredPeripherals: [CBPeripheral] = []
     
     private var writeCharacteristic: CBCharacteristic?
     private var notifyCharacteristic: CBCharacteristic?
     private let writeCharacteristicUUID = CBUUID(string: "C6339440-E62E-11E3-A5B3-0002A5D5C51B")
     private let notifyCharacteristicUUID = CBUUID(string: "D0FD6B80-E62E-11E3-A2E9-0002A5D5C51B")
     
-    @Published var isPeripheralReady = false
-    @Published @objc dynamic var connectedDevice: CBPeripheral?
-    @Published var isScanning = false
+    @Published public var isPeripheralReady = false
+    @Published @objc dynamic public var connectedDevice: CBPeripheral?
+    @Published public var isScanning = false
 
     private var receivedData: Data = Data()
     private let queue = DispatchQueue(label: "com.blemanager.queue")

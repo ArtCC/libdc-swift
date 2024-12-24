@@ -1,6 +1,16 @@
 #import "BLEBridge.h"
 #import <Foundation/Foundation.h>
-#import "libdc_swift-Swift.h"
+
+// Forward-declare the Swift class so this file can compile.
+@interface CoreBluetoothManager : NSObject
++ (instancetype)shared;
+- (bool)connectToDevice:(NSString*)deviceAddress;
+- (bool)discoverServices;
+- (bool)enableNotifications;
+- (NSData*)readDataPartial:(int)length;
+- (bool)writeData:(NSData*)data;
+- (void)close;
+@end
 
 static CoreBluetoothManager *bleManager = nil;
 

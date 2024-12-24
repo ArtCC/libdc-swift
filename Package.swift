@@ -4,7 +4,8 @@ import PackageDescription
 let package = Package(
     name: "LibDCSwift",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v15),
+        .macOS(.v12)
     ],
     products: [
         .library(
@@ -38,18 +39,22 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
-                .headerSearchPath("../libdivecomputer/include"),
-                .headerSearchPath("../libdivecomputer/src"),
+                .headerSearchPath("../../libdivecomputer/include"),
+                .headerSearchPath("../../libdivecomputer/src"),
                 .define("HAVE_CONFIG_H")
-            ],
-            swiftSettings: [
-                .define("PRODUCT_MODULE_NAME=libdc_swift")
             ]
         ),
         .target(
             name: "LibDCSwift",
             dependencies: ["LibDCBridge", "Clibdivecomputer"],
             path: "Sources/LibDCSwift",
+            sources: [
+                "Logger.swift",
+                "BLEManager.swift",
+                "Models/DeviceConfiguration.swift",
+                "Models/DiveData.swift",
+                "ViewModels/DiveDataViewModel.swift"
+            ],
             swiftSettings: [
                 .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
             ]

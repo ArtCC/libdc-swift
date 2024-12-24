@@ -131,3 +131,40 @@ When distributing as a package:
 - Only LibDCSwift and LibDCBridge are exposed
 - Test apps are excluded
 - Headers are properly bundled
+
+# fyi
+
+## BLEBridge and Swift bridging
+- Removed "@import LibDCSwift" from BLEBridge.m to prevent module not found errors.
+- Added a forward declaration of "CoreBluetoothManager" in BLEBridge.m so that Objective-C can call the Swift class directly.
+
+## Logger Integration
+- Moved Logger.swift into Sources/LibDCSwift directory for proper target inclusion
+- Logger functions (logDebug, logError, etc.) are now available throughout the LibDCSwift target
+
+## Platform Support
+- Updated minimum deployment targets to iOS 15 and macOS 12
+- Required for Combine framework features (@Published, ObservableObject)
+- Ensures compatibility with SwiftUI and modern iOS/macOS features
+
+## Access Control
+- Public properties in CoreBluetoothManager:
+  - shared (static instance)
+  - centralManager
+  - peripheral
+  - discoveredPeripherals
+  - isPeripheralReady
+  - connectedDevice
+  - isScanning
+- Properties need public access for use in client applications
+- @Published properties must be marked public to be observable outside the module
+
+## Source Files Organization
+- Models:
+  - DiveData.swift: Core data structure for dive information
+  - DeviceConfiguration.swift: Device setup and configuration
+- ViewModels:
+  - DiveDataViewModel.swift: Manages dive data state and operations
+- Core:
+  - BLEManager.swift: Bluetooth communication
+  - Logger.swift: Logging functionality
