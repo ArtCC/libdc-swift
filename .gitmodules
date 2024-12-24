@@ -1,3 +1,4 @@
-[submodule "Vendors/libdivecomputer"]
-	path = Vendors/libdivecomputer
+[submodule "libdivecomputer"]
+	path = libdivecomputer
 	url = https://github.com/libdivecomputer/libdivecomputer.git
+    branch = master 
