@@ -23,12 +23,25 @@ let package = Package(
             path: "libdivecomputer",
             exclude: [
                 "doc",
-                "m4"
+                "m4",
+                "src/libdivecomputer.rc",
+                "src/libdivecomputer.symbols",
+                "src/Makefile.am"
             ],
+            sources: ["src"],
             publicHeadersPath: "include",
             cSettings: [
+                .headerSearchPath("."),
+                .headerSearchPath("include"),
                 .headerSearchPath("include/libdivecomputer"),
-                .headerSearchPath("src")
+                .headerSearchPath("src"),
+                .define("HAVE_CONFIG_H"),
+                .define("PACKAGE", to: "libdivecomputer"),
+                .define("VERSION", to: "0.8.0"),
+                .unsafeFlags(["-fmodules"])
+            ],
+            linkerSettings: [
+                .linkedLibrary("divecomputer")
             ]
         ),
         .target(
@@ -41,7 +54,11 @@ let package = Package(
                 .headerSearchPath("include"),
                 .headerSearchPath("../../libdivecomputer/include"),
                 .headerSearchPath("../../libdivecomputer/src"),
-                .define("HAVE_CONFIG_H")
+                .define("HAVE_CONFIG_H"),
+                .unsafeFlags(["-fmodules"])
+            ],
+            linkerSettings: [
+                .linkedLibrary("divecomputer")
             ]
         ),
         .target(
@@ -53,10 +70,12 @@ let package = Package(
                 "BLEManager.swift",
                 "Models/DeviceConfiguration.swift",
                 "Models/DiveData.swift",
-                "ViewModels/DiveDataViewModel.swift"
+                "ViewModels/DiveDataViewModel.swift",
+                "Parser/"
             ],
-            swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
+            cSettings: [
+                .headerSearchPath("../LibDCBridge/include"),
+                .headerSearchPath("../../libdivecomputer/include")
             ]
         )
     ]
