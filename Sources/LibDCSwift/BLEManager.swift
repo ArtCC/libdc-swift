@@ -1,7 +1,5 @@
 import Foundation
 import CoreBluetooth
-import Clibdivecomputer
-import LibDCBridge
 import Combine
 
 @objc(SerialService)

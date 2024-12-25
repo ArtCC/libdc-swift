@@ -1,7 +1,4 @@
 import Foundation
-import CoreBluetooth
-import Clibdivecomputer
-import LibDCBridge
 
 @objc public class DeviceConfiguration: NSObject {
     public enum DeviceFamily {
@@ -9,7 +6,7 @@ import LibDCBridge
         case shearwaterPetrel
         case suuntoEonSteel
         
-        public var asDCFamily: dc_family_t {
+        var asDCFamily: dc_family_t {
             switch self {
             case .shearwaterPredator: return DC_FAMILY_SHEARWATER_PREDATOR
             case .shearwaterPetrel: return DC_FAMILY_SHEARWATER_PETREL
@@ -165,37 +162,5 @@ import LibDCBridge
         }
         
         return (deviceFamily, model)
-    }
-    
-    public static func createParser(data: Data, family: DeviceFamily, model: UInt32) -> Bool {
-        // Create a context if needed
-        var context: UnsafeMutablePointer<dc_context_t>?
-        let contextStatus = dc_context_new(&context)
-        guard contextStatus == DC_STATUS_SUCCESS else {
-            logError("Failed to create context: \(contextStatus)")
-            return false
-        }
-        defer { dc_context_free(context) }
-        
-        // Create parser
-        var parser: UnsafeMutablePointer<dc_parser_t?>?
-        let status = data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) -> dc_status_t in
-            return dc_parser_new2(&parser,
-                               context,
-                               nil, // We'll need to get a descriptor
-                               bytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                               data.count)
-        }
-        
-        // Check result
-        if status == DC_STATUS_SUCCESS {
-            logDebug("Successfully created parser")
-            // Store parser for later use if needed
-            // You may want to add a property to store this
-            return true
-        } else {
-            logError("Failed to create parser: \(status)")
-            return false
-        }
     }
 }

@@ -1,8 +1,0 @@
-module LibDCBridge [system] {
-    umbrella header "include/dc-types.h"
-    module * { export * }
-    
-    link "divecomputer"
-    requires Clibdivecomputer
-    export *
-} 

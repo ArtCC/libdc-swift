@@ -190,3 +190,13 @@ When distributing as a package:
 - BLEBridge.h must declare the Swift class with @class.
 - Ensure Swift class name matches Objective-C expectations.
 - All methods called from Objective-C must have @objc attribute.
+
+## Generic Parser Setup
+
+A new generic parser implementation has been added to simplify dive data processing:
+
+- `GenericParser.swift`: Centralizes parsing logic for all supported device families
+- Uses existing `DiveData` structure for parsed dive information
+- Parser automatically handles different device types and sample processing
+- Error handling with specific ParserError cases for better debugging
+- Thread-safe implementation with proper memory management

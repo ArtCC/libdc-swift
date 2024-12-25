@@ -7,7 +7,6 @@
 #include <libdivecomputer/context.h>
 #include <libdivecomputer/descriptor.h>
 #include <libdivecomputer/device.h>
-#include <libdivecomputer/parser.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,11 +31,6 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
 dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
 dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
 dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor);
-dc_status_t create_parser(dc_parser_t **out, 
-                         dc_context_t *context,
-                         dc_descriptor_t *descriptor,
-                         const unsigned char data[],
-                         size_t size);
 
 #ifdef __cplusplus
 }

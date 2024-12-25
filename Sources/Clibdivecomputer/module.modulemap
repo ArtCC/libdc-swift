@@ -1,34 +1,5 @@
 module Clibdivecomputer [system] {
-    module common {
-        header "include/libdivecomputer/common.h"
-        export *
-    }
-    
-    module context {
-        header "include/libdivecomputer/context.h"
-        export *
-    }
-    
-    module descriptor {
-        header "include/libdivecomputer/descriptor.h"
-        export *
-    }
-    
-    module device {
-        header "include/libdivecomputer/device.h"
-        export *
-    }
-    
-    module parser {
-        header "include/libdivecomputer/parser.h"
-        export *
-    }
-    
-    module iterator {
-        header "include/libdivecomputer/iterator.h"
-        export *
-    }
-    
+    header "shim.h"
     link "divecomputer"
     export *
 }

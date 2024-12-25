@@ -23,25 +23,12 @@ let package = Package(
             path: "libdivecomputer",
             exclude: [
                 "doc",
-                "m4",
-                "src/libdivecomputer.rc",
-                "src/libdivecomputer.symbols",
-                "src/Makefile.am"
+                "m4"
             ],
-            sources: ["src"],
             publicHeadersPath: "include",
             cSettings: [
-                .headerSearchPath("."),
-                .headerSearchPath("include"),
                 .headerSearchPath("include/libdivecomputer"),
-                .headerSearchPath("src"),
-                .define("HAVE_CONFIG_H"),
-                .define("PACKAGE", to: "libdivecomputer"),
-                .define("VERSION", to: "0.8.0"),
-                .unsafeFlags(["-fmodules"])
-            ],
-            linkerSettings: [
-                .linkedLibrary("divecomputer")
+                .headerSearchPath("src")
             ]
         ),
         .target(
@@ -54,11 +41,7 @@ let package = Package(
                 .headerSearchPath("include"),
                 .headerSearchPath("../../libdivecomputer/include"),
                 .headerSearchPath("../../libdivecomputer/src"),
-                .define("HAVE_CONFIG_H"),
-                .unsafeFlags(["-fmodules"])
-            ],
-            linkerSettings: [
-                .linkedLibrary("divecomputer")
+                .define("HAVE_CONFIG_H")
             ]
         ),
         .target(
@@ -71,11 +54,10 @@ let package = Package(
                 "Models/DeviceConfiguration.swift",
                 "Models/DiveData.swift",
                 "ViewModels/DiveDataViewModel.swift",
-                "Parser/"
+                "Parser/GenericParser.swift"
             ],
-            cSettings: [
-                .headerSearchPath("../LibDCBridge/include"),
-                .headerSearchPath("../../libdivecomputer/include")
+            swiftSettings: [
+                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
             ]
         )
     ]
