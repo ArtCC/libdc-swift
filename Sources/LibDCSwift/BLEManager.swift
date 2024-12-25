@@ -2,6 +2,26 @@ import Foundation
 import CoreBluetooth
 import Combine
 
+@objc(SerialService)
+class SerialService: NSObject {
+    @objc let uuid: String
+    @objc let vendor: String
+    @objc let product: String
+    
+    @objc init(uuid: String, vendor: String, product: String) {
+        self.uuid = uuid
+        self.vendor = vendor
+        self.product = product
+        super.init()
+    }
+}
+
+extension CBUUID {
+    var isStandardBluetooth: Bool {
+        return self.data.count == 2
+    }
+}
+
 @objc(CoreBluetoothManager)
 public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc public static let shared = CoreBluetoothManager()
@@ -13,8 +33,6 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     
     private var writeCharacteristic: CBCharacteristic?
     private var notifyCharacteristic: CBCharacteristic?
-    private let writeCharacteristicUUID = CBUUID(string: "C6339440-E62E-11E3-A5B3-0002A5D5C51B")
-    private let notifyCharacteristicUUID = CBUUID(string: "D0FD6B80-E62E-11E3-A2E9-0002A5D5C51B")
     
     @Published public var isPeripheralReady = false
     @Published @objc dynamic public var connectedDevice: CBPeripheral?
@@ -49,26 +67,27 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     private var lastDataReceived: Date?
     private var averageTransferRate: Double = 0
     
-    private struct BLEService {
-        let serviceUUID: CBUUID
-        let writeCharacteristic: CBCharacteristic
-        let notifyCharacteristic: CBCharacteristic
-    }
-    
-    // Known service UUIDs for different manufacturers
-    private let knownServiceUUIDs: [CBUUID] = [
-        // Shearwater
-        CBUUID(string: "00000001-0000-1000-8000-00805f9b34fb"),
-        // Suunto
-        CBUUID(string: "98ae7120-e62e-11e3-badd-0002a5d5c51b"),
+    @objc private let knownSerialServices: [SerialService] = [
+        SerialService(uuid: "0000fefb-0000-1000-8000-00805f9b34fb", vendor: "Heinrichs-Weikamp", product: "Telit/Stollmann"),
+        SerialService(uuid: "2456e1b9-26e2-8f83-e744-f34f01e9d701", vendor: "Heinrichs-Weikamp", product: "U-Blox"),
+        SerialService(uuid: "544e326b-5b72-c6b0-1c46-41c1bc448118", vendor: "Mares", product: "BlueLink Pro"),
+        SerialService(uuid: "6e400001-b5a3-f393-e0a9-e50e24dcca9e", vendor: "Nordic Semi", product: "UART"),
+        SerialService(uuid: "98ae7120-e62e-11e3-badd-0002a5d5c51b", vendor: "Suunto", product: "EON Steel/Core"),
+        SerialService(uuid: "cb3c4555-d670-4670-bc20-b61dbc851e9a", vendor: "Pelagic", product: "i770R/i200C"),
+        SerialService(uuid: "ca7b0001-f785-4c38-b599-c7c5fbadb034", vendor: "Pelagic", product: "i330R/DSX"),
+        SerialService(uuid: "fdcdeaaa-295d-470e-bf15-04217b7aa0a0", vendor: "ScubaPro", product: "G2/G3"),
+        SerialService(uuid: "fe25c237-0ece-443c-b0aa-e02033e7029d", vendor: "Shearwater", product: "Perdix/Teric"),
+        SerialService(uuid: "0000fcef-0000-1000-8000-00805f9b34fb", vendor: "Divesoft", product: "Freedom")
     ]
     
-    private var discoveredServices: [BLEService] = []
-    private var pendingServiceDiscovery = false
+    private let excludedServices: Set<String> = [
+        "00001530-1212-efde-1523-785feabcd123", // Nordic Upgrade
+        "9e5d1e47-5c13-43a0-8635-82ad38a1386f", // Broadcom Upgrade #1
+        "a86abc2d-d44c-442e-99f7-80059a873e36"  // Broadcom Upgrade #2
+    ]
     
-    // Replace the existing characteristic properties with:
-    private var currentService: BLEService?
-    
+    private var preferredService: CBService?
+
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -89,49 +108,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     @objc public func discoverServices() -> Bool {
         guard let peripheral = self.peripheral else { return false }
         
-        pendingServiceDiscovery = true
-        discoveredServices.removeAll()
+        peripheral.discoverServices(nil)
         
-        // First try known service UUIDs
-        peripheral.discoverServices(knownServiceUUIDs)
-        
-        // Wait for initial service discovery
-        let timeout = Date().addingTimeInterval(2.0)
-        while pendingServiceDiscovery && Date() < timeout {
+        // Wait for service discovery (you might want to implement a timeout here)
+        while writeCharacteristic == nil || notifyCharacteristic == nil {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
         }
         
-        // If no known services found, try discovering all services
-        if discoveredServices.isEmpty {
-            logInfo("No known services found, discovering all services")
-            pendingServiceDiscovery = true
-            peripheral.discoverServices(nil)
-            
-            while pendingServiceDiscovery && Date() < timeout {
-                RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-            }
-        }
-        
-        // Select the best service based on discovered characteristics
-        if let bestService = selectBestService() {
-            currentService = bestService
-            writeCharacteristic = bestService.writeCharacteristic
-            notifyCharacteristic = bestService.notifyCharacteristic
-            return true
-        }
-        
-        return false
-    }
-
-    private func selectBestService() -> BLEService? {
-        // First try to find a known service
-        if let knownService = discoveredServices.first(where: { knownServiceUUIDs.contains($0.serviceUUID) }) {
-            logInfo("Found known service: \($0.serviceUUID)")
-            return knownService
-        }
-        
-        // Otherwise return the first valid service found
-        return discoveredServices.first
+        return writeCharacteristic != nil && notifyCharacteristic != nil
     }
 
     @objc public func enableNotifications() -> Bool {
@@ -276,30 +260,29 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             logError("Error discovering services: \(error.localizedDescription)")
-            pendingServiceDiscovery = false
             return
         }
         
         guard let services = peripheral.services else {
             logWarning("No services found")
-            pendingServiceDiscovery = false
             return
         }
         
-        let dispatchGroup = DispatchGroup()
-        
         for service in services {
-            dispatchGroup.enter()
-            peripheral.discoverCharacteristics(nil, for: service)
-            
-            // Add timeout for characteristic discovery
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
-                dispatchGroup.leave()
+            if isExcludedService(service.uuid) {
+                logInfo("Ignoring known firmware service: \(service.uuid)")
+                continue
             }
-        }
-        
-        dispatchGroup.notify(queue: .main) {
-            self.pendingServiceDiscovery = false
+            
+            if let knownService = isKnownSerialService(service.uuid) {
+                logInfo("Found known service: \(knownService.vendor) \(knownService.product)")
+                preferredService = service
+                writeCharacteristic = nil
+                notifyCharacteristic = nil
+            } else if !service.uuid.isStandardBluetooth {
+                logInfo("Discovering characteristics for unknown service: \(service.uuid)")
+            }
+            peripheral.discoverCharacteristics(nil, for: service)
         }
     }
 
@@ -314,32 +297,17 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             return
         }
         
-        var writeChar: CBCharacteristic?
-        var notifyChar: CBCharacteristic?
-        
         for characteristic in characteristics {
-            // Look for write characteristic
-            if characteristic.properties.contains(.write) || 
-               characteristic.properties.contains(.writeWithoutResponse) {
-                writeChar = characteristic
+            if isWriteCharacteristic(characteristic) {
+                logInfo("Found write characteristic: \(characteristic.uuid)")
+                writeCharacteristic = characteristic
             }
             
-            // Look for notify characteristic
-            if (characteristic.properties.contains(.notify) || 
-                characteristic.properties.contains(.indicate)) {
-                notifyChar = characteristic
+            if isReadCharacteristic(characteristic) {
+                logInfo("Found notify characteristic: \(characteristic.uuid)")
+                notifyCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
             }
-        }
-        
-        // If we found both required characteristics, add this as a valid service
-        if let writeChar = writeChar, let notifyChar = notifyChar {
-            let bleService = BLEService(
-                serviceUUID: service.uuid,
-                writeCharacteristic: writeChar,
-                notifyCharacteristic: notifyChar
-            )
-            discoveredServices.append(bleService)
-            logInfo("Found valid service: \(service.uuid)")
         }
     }
 
@@ -373,22 +341,18 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        if characteristic.uuid == writeCharacteristicUUID {
-            if let error = error {
-                logError("Error writing to characteristic: \(error.localizedDescription)")
-            } else {
-                logDebug("Successfully wrote to characteristic")
-            }
+        if let error = error {
+            logError("Error writing to characteristic: \(error.localizedDescription)")
+        } else {
+            logDebug("Successfully wrote to characteristic")
         }
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        if characteristic.uuid == notifyCharacteristicUUID {
-            if let error = error {
-                logError("Error changing notification state: \(error.localizedDescription)")
-            } else {
-                logInfo("Notification state updated: \(characteristic.isNotifying ? "enabled" : "disabled")")
-            }
+        if let error = error {
+            logError("Error changing notification state: \(error.localizedDescription)")
+        } else {
+            logInfo("Notification state updated: \(characteristic.isNotifying ? "enabled" : "disabled")")
         }
     }
 
@@ -433,6 +397,26 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
         
         lastDataReceived = Date()
+    }
+
+    private func isKnownSerialService(_ uuid: CBUUID) -> SerialService? {
+        return knownSerialServices.first { service in
+            uuid.uuidString.lowercased() == service.uuid.lowercased()
+        }
+    }
+    
+    private func isExcludedService(_ uuid: CBUUID) -> Bool {
+        return excludedServices.contains(uuid.uuidString.lowercased())
+    }
+    
+    private func isWriteCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        return characteristic.properties.contains(.write) ||
+               characteristic.properties.contains(.writeWithoutResponse)
+    }
+    
+    private func isReadCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        return characteristic.properties.contains(.notify) ||
+               characteristic.properties.contains(.indicate)
     }
 }
 
