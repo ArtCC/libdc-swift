@@ -49,6 +49,26 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     private var lastDataReceived: Date?
     private var averageTransferRate: Double = 0
     
+    private struct BLEService {
+        let serviceUUID: CBUUID
+        let writeCharacteristic: CBCharacteristic
+        let notifyCharacteristic: CBCharacteristic
+    }
+    
+    // Known service UUIDs for different manufacturers
+    private let knownServiceUUIDs: [CBUUID] = [
+        // Shearwater
+        CBUUID(string: "00000001-0000-1000-8000-00805f9b34fb"),
+        // Suunto
+        CBUUID(string: "98ae7120-e62e-11e3-badd-0002a5d5c51b"),
+    ]
+    
+    private var discoveredServices: [BLEService] = []
+    private var pendingServiceDiscovery = false
+    
+    // Replace the existing characteristic properties with:
+    private var currentService: BLEService?
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -69,14 +89,49 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     @objc public func discoverServices() -> Bool {
         guard let peripheral = self.peripheral else { return false }
         
-        peripheral.discoverServices(nil)
+        pendingServiceDiscovery = true
+        discoveredServices.removeAll()
         
-        // Wait for service discovery (you might want to implement a timeout here)
-        while writeCharacteristic == nil || notifyCharacteristic == nil {
+        // First try known service UUIDs
+        peripheral.discoverServices(knownServiceUUIDs)
+        
+        // Wait for initial service discovery
+        let timeout = Date().addingTimeInterval(2.0)
+        while pendingServiceDiscovery && Date() < timeout {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
         }
         
-        return writeCharacteristic != nil && notifyCharacteristic != nil
+        // If no known services found, try discovering all services
+        if discoveredServices.isEmpty {
+            logInfo("No known services found, discovering all services")
+            pendingServiceDiscovery = true
+            peripheral.discoverServices(nil)
+            
+            while pendingServiceDiscovery && Date() < timeout {
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            }
+        }
+        
+        // Select the best service based on discovered characteristics
+        if let bestService = selectBestService() {
+            currentService = bestService
+            writeCharacteristic = bestService.writeCharacteristic
+            notifyCharacteristic = bestService.notifyCharacteristic
+            return true
+        }
+        
+        return false
+    }
+
+    private func selectBestService() -> BLEService? {
+        // First try to find a known service
+        if let knownService = discoveredServices.first(where: { knownServiceUUIDs.contains($0.serviceUUID) }) {
+            logInfo("Found known service: \($0.serviceUUID)")
+            return knownService
+        }
+        
+        // Otherwise return the first valid service found
+        return discoveredServices.first
     }
 
     @objc public func enableNotifications() -> Bool {
@@ -221,16 +276,30 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             logError("Error discovering services: \(error.localizedDescription)")
+            pendingServiceDiscovery = false
             return
         }
         
         guard let services = peripheral.services else {
             logWarning("No services found")
+            pendingServiceDiscovery = false
             return
         }
         
+        let dispatchGroup = DispatchGroup()
+        
         for service in services {
+            dispatchGroup.enter()
             peripheral.discoverCharacteristics(nil, for: service)
+            
+            // Add timeout for characteristic discovery
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            self.pendingServiceDiscovery = false
         }
     }
 
@@ -245,16 +314,32 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             return
         }
         
+        var writeChar: CBCharacteristic?
+        var notifyChar: CBCharacteristic?
+        
         for characteristic in characteristics {
-            logDebug("Discovered characteristic: \(characteristic.uuid)")
-            if characteristic.uuid == writeCharacteristicUUID {
-                writeCharacteristic = characteristic
-                logInfo("Write characteristic found")
-            } else if characteristic.uuid == notifyCharacteristicUUID {
-                notifyCharacteristic = characteristic
-                logInfo("Notify characteristic found")
-                peripheral.setNotifyValue(true, for: characteristic)
+            // Look for write characteristic
+            if characteristic.properties.contains(.write) || 
+               characteristic.properties.contains(.writeWithoutResponse) {
+                writeChar = characteristic
             }
+            
+            // Look for notify characteristic
+            if (characteristic.properties.contains(.notify) || 
+                characteristic.properties.contains(.indicate)) {
+                notifyChar = characteristic
+            }
+        }
+        
+        // If we found both required characteristics, add this as a valid service
+        if let writeChar = writeChar, let notifyChar = notifyChar {
+            let bleService = BLEService(
+                serviceUUID: service.uuid,
+                writeCharacteristic: writeChar,
+                notifyCharacteristic: notifyChar
+            )
+            discoveredServices.append(bleService)
+            logInfo("Found valid service: \(service.uuid)")
         }
     }
 

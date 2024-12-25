@@ -5,14 +5,14 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 ## Key Files and Their Purposes
 
 ### Core Components
-- **BLEManager.swift**: Handles BLE communication and device management
-- **BluetoothScanView.swift**: Main UI for scanning and connecting to devices
-- **ConnectedDeviceView.swift**: Handles dive log retrieval and display
-- **DiveDataViewModel.swift**: Manages dive data and state
+- **BLEManager.swift**: Handles BLE communication and device management, now with dynamic service discovery.
+- **BluetoothScanView.swift**: Main UI for scanning and connecting to devices.
+- **ConnectedDeviceView.swift**: Handles dive log retrieval and display.
+- **DiveDataViewModel.swift**: Manages dive data and state.
 
 ### Protocol Implementation
-- **configuredc.c**: Bridge between Swift and libdivecomputer
-- **suunto_eonsteel.c**: Suunto-specific protocol implementation
+- **configuredc.c**: Bridge between Swift and libdivecomputer.
+- **suunto_eonsteel.c**: Suunto-specific protocol implementation.
 
 ## Key Features
 
@@ -65,72 +65,75 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 4. Implement multi-device handling
 
 ## BLE Transfer Optimizations
-- Reduced polling intervals from 100ms to 10ms
-- Shortened timeouts for faster error detection
-- Added transfer rate monitoring
-- Immediate buffer processing of received data
-- Thread-safe buffer management with minimal blocking
+- Reduced polling intervals from 100ms to 10ms.
+- Shortened timeouts for faster error detection.
+- Added transfer rate monitoring.
+- Immediate buffer processing of received data.
+- Thread-safe buffer management with minimal blocking.
+
+## Dynamic BLE Service Discovery
+- The application now implements a dynamic approach to discover BLE services and characteristics.
+- It first attempts to discover known service UUIDs for specific manufacturers (e.g., Shearwater, Suunto).
+- If no known services are found, it falls back to discovering all available services.
+- The application identifies valid services based on the presence of both write and notify characteristics.
+- This approach enhances compatibility with various BLE devices without hardcoding specific UUIDs.
 
 ## Build Configuration Notes
 
 ### Linking Configuration
-- Ensure all C functions are properly declared with extern "C" when used in C++ context
-- Key functions like `identify_ble_device` and `open_ble_device` must be included in build
-- BLEBridge and configuredc headers must be properly exported
+- Ensure all C functions are properly declared with extern "C" when used in C++ context.
+- Key functions like `identify_ble_device` and `open_ble_device` must be included in build.
+- BLEBridge and configuredc headers must be properly exported.
 
 ## Dependency Management
 
 ### libdivecomputer Integration
-- Included as Git submodule in Vendors/libdivecomputer
-- Version locked to 0.8.0 via Package.resolved
-- Exposed through Clibdivecomputer module
-- Headers accessible via modular imports
+- Included as Git submodule in Vendors/libdivecomputer.
+- Version locked to 0.8.0 via Package.resolved.
+- Exposed through Clibdivecomputer module.
+- Headers accessible via modular imports.
 
 ### Build Configuration
-- Minimum deployment targets: iOS 15, macOS 12
-- Uses module maps for C library integration
-- Automatic version management through SPM
+- Minimum deployment targets: iOS 15, macOS 12.
+- Uses module maps for C library integration.
+- Automatic version management through SPM.
 
 ### Submodule Management
-- Update submodule: git submodule update --remote
-- Initial clone: git clone --recursive [repo-url]
-- Post-clone setup: git submodule init && git submodule update
+- Update submodule: git submodule update --remote.
+- Initial clone: git clone --recursive [repo-url].
+- Post-clone setup: git submodule init && git submodule update.
 
 ### Git Configuration
 - .gitignore configured to exclude:
-  - Xcode project files
-  - macOS system files
-  - Build artifacts
-  - Swift Package Manager files
-- Manual cleanup may be needed for previously tracked files
+  - Xcode project files.
+  - macOS system files.
+  - Build artifacts.
+  - Swift Package Manager files.
+- Manual cleanup may be needed for previously tracked files.
 
 ## Development and Distribution
 
 ### Package Structure
-- LibDCSwift: Main Swift library for dive computer communication
-- LibDCBridge: Objective-C bridge to libdivecomputer
-- Clibdivecomputer: C library wrapper
-
-### Test Applications
-- LibDCSwiftUI: Built-in test app (DEBUG builds only)
-- Examples/TestApp: Standalone test app project
+- LibDCSwift: Main Swift library for dive computer communication.
+- LibDCBridge: Objective-C bridge to libdivecomputer.
+- Clibdivecomputer: C library wrapper.
 
 ### Headers
-- libdcswift-bridging-header.h: Main bridging header
-- BLEBridge.h: Bluetooth functionality bridge
-- configuredc.h: Device configuration bridge
+- libdcswift-bridging-header.h: Main bridging header.
+- BLEBridge.h: Bluetooth functionality bridge.
+- configuredc.h: Device configuration bridge.
 
 ### Development
-1. Open `libdc-swift.xcworkspace`
-2. Both package and test app are available
-3. Use built-in test app for quick testing
-4. Use standalone test app for full app testing
+1. Open `libdc-swift.xcworkspace`.
+2. Both package and test app are available.
+3. Use built-in test app for quick testing.
+4. Use standalone test app for full app testing.
 
 ### Distribution
 When distributing as a package:
-- Only LibDCSwift and LibDCBridge are exposed
-- Test apps are excluded
-- Headers are properly bundled
+- Only LibDCSwift and LibDCBridge are exposed.
+- Test apps are excluded.
+- Headers are properly bundled.
 
 # fyi
 
@@ -139,51 +142,51 @@ When distributing as a package:
 - Added a forward declaration of "CoreBluetoothManager" in BLEBridge.m so that Objective-C can call the Swift class directly.
 
 ## Logger Integration
-- Moved Logger.swift into Sources/LibDCSwift directory for proper target inclusion
-- Logger functions (logDebug, logError, etc.) are now available throughout the LibDCSwift target
+- Moved Logger.swift into Sources/LibDCSwift directory for proper target inclusion.
+- Logger functions (logDebug, logError, etc.) are now available throughout the LibDCSwift target.
 
 ## Platform Support
-- Updated minimum deployment targets to iOS 15 and macOS 12
-- Required for Combine framework features (@Published, ObservableObject)
-- Ensures compatibility with SwiftUI and modern iOS/macOS features
+- Updated minimum deployment targets to iOS 15 and macOS 12.
+- Required for Combine framework features (@Published, ObservableObject).
+- Ensures compatibility with SwiftUI and modern iOS/macOS features.
 
 ## Access Control
 - Public properties in CoreBluetoothManager:
-  - shared (static instance)
-  - centralManager
-  - peripheral
-  - discoveredPeripherals
-  - isPeripheralReady
-  - connectedDevice
-  - isScanning
-- Properties need public access for use in client applications
-- @Published properties must be marked public to be observable outside the module
+  - shared (static instance).
+  - centralManager.
+  - peripheral.
+  - discoveredPeripherals.
+  - isPeripheralReady.
+  - connectedDevice.
+  - isScanning.
+- Properties need public access for use in client applications.
+- @Published properties must be marked public to be observable outside the module.
 
 ## Source Files Organization
 - Models:
-  - DiveData.swift: Core data structure for dive information
-  - DeviceConfiguration.swift: Device setup and configuration
+  - DiveData.swift: Core data structure for dive information.
+  - DeviceConfiguration.swift: Device setup and configuration.
 - ViewModels:
-  - DiveDataViewModel.swift: Manages dive data state and operations
+  - DiveDataViewModel.swift: Manages dive data state and operations.
 - Core:
-  - BLEManager.swift: Bluetooth communication
-  - Logger.swift: Logging functionality
+  - BLEManager.swift: Bluetooth communication.
+  - Logger.swift: Logging functionality.
 
 ## Observable Properties in CoreBluetoothManager
 - @Published properties:
-  - centralManager
-  - peripheral
-  - discoveredPeripherals
-  - isPeripheralReady
-  - connectedDevice
-  - isScanning
-  - openedDeviceDataPtr (with willSet observer)
-- Properties are observable in SwiftUI views
-- Changes trigger view updates automatically
-- Unsafe pointer properties need special handling for observation
+  - centralManager.
+  - peripheral.
+  - discoveredPeripherals.
+  - isPeripheralReady.
+  - connectedDevice.
+  - isScanning.
+  - openedDeviceDataPtr (with willSet observer).
+- Properties are observable in SwiftUI views.
+- Changes trigger view updates automatically.
+- Unsafe pointer properties need special handling for observation.
 
 ## Objective-C Interop
-- CoreBluetoothManager needs @objc(CoreBluetoothManager) attribute for proper Objective-C visibility
-- BLEBridge.h must declare the Swift class with @class
-- Ensure Swift class name matches Objective-C expectations
-- All methods called from Objective-C must have @objc attribute
+- CoreBluetoothManager needs @objc(CoreBluetoothManager) attribute for proper Objective-C visibility.
+- BLEBridge.h must declare the Swift class with @class.
+- Ensure Swift class name matches Objective-C expectations.
+- All methods called from Objective-C must have @objc attribute.
