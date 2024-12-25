@@ -200,3 +200,8 @@ A new generic parser implementation has been added to simplify dive data process
 - Parser automatically handles different device types and sample processing
 - Error handling with specific ParserError cases for better debugging
 - Thread-safe implementation with proper memory management
+- Collects complete dive profile data including:
+  * Time series data points
+  * Depth measurements
+  * Temperature readings
+  * Tank pressure when available

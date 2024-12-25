@@ -9,9 +9,23 @@ public enum ParserError: Error {
 }
 
 public class GenericParser {
-    private struct SampleData {
+    private class SampleData {
         var maxDepth: Double = 0.0
         var lastTemperature: Double = 0.0
+        var profile: [ProfilePoint] = []
+        var currentTime: TimeInterval = 0
+        var currentDepth: Double = 0
+        var currentTemperature: Double?
+        var currentPressure: Double?
+        
+        func addCurrentPoint() {
+            profile.append(ProfilePoint(
+                time: currentTime,
+                depth: currentDepth,
+                temperature: currentTemperature,
+                pressure: currentPressure
+            ))
+        }
     }
     
     public static func parseDiveData(
@@ -61,14 +75,29 @@ public class GenericParser {
             }
             
             switch type {
+            case DC_SAMPLE_TIME:
+                sampleDataPtr.pointee.currentTime = TimeInterval(value.time) / 1000.0 // Convert ms to seconds
+                
             case DC_SAMPLE_DEPTH:
+                sampleDataPtr.pointee.currentDepth = value.depth
                 if value.depth > sampleDataPtr.pointee.maxDepth {
                     sampleDataPtr.pointee.maxDepth = value.depth
                 }
+                
             case DC_SAMPLE_TEMPERATURE:
+                sampleDataPtr.pointee.currentTemperature = value.temperature
                 sampleDataPtr.pointee.lastTemperature = value.temperature
+                
+            case DC_SAMPLE_PRESSURE:
+                sampleDataPtr.pointee.currentPressure = value.pressure.value
+                
             default:
                 break
+            }
+            
+            // Add point to profile after processing each time sample
+            if type == DC_SAMPLE_TIME {
+                sampleDataPtr.pointee.addCurrentPoint()
             }
         }
         
@@ -96,7 +125,8 @@ public class GenericParser {
             number: diveNumber,
             datetime: date,
             maxDepth: sampleData.maxDepth,
-            temperature: sampleData.lastTemperature
+            temperature: sampleData.lastTemperature,
+            profile: sampleData.profile
         )
     }
 } 
