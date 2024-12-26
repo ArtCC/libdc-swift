@@ -88,9 +88,43 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     
     private var preferredService: CBService?
 
-    private override init() {
+    private let savedDeviceKey = "savedBLEDevice"
+    private var savedDeviceIdentifier: String? {
+        get { UserDefaults.standard.string(forKey: savedDeviceKey) }
+        set { UserDefaults.standard.set(newValue, forKey: savedDeviceKey) }
+    }
+    
+    public override init() {
         super.init()
-        centralManager = CBCentralManager(delegate: self, queue: nil)
+        self.centralManager = CBCentralManager(delegate: self, queue: nil)
+    }
+    
+    public func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        if central.state == .poweredOn {
+            // Try to reconnect to saved device
+            if let savedId = savedDeviceIdentifier,
+               let uuid = UUID(uuidString: savedId),
+               let savedPeripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first {
+                connectToPeripheral(savedPeripheral)
+            }
+        }
+    }
+    
+    public func connectToPeripheral(_ peripheral: CBPeripheral) {
+        self.peripheral = peripheral
+        centralManager.connect(peripheral, options: nil)
+        // Save the device identifier
+        savedDeviceIdentifier = peripheral.identifier.uuidString
+    }
+    
+    public func forgetSavedDevice() {
+        savedDeviceIdentifier = nil
+        if let peripheral = peripheral {
+            centralManager.cancelPeripheralConnection(peripheral)
+        }
+        peripheral = nil
+        connectedDevice = nil
+        isPeripheralReady = false
     }
     
     @objc public func connectToDevice(_ address: String) -> Bool {

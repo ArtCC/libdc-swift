@@ -205,3 +205,42 @@ A new generic parser implementation has been added to simplify dive data process
   * Depth measurements
   * Temperature readings
   * Tank pressure when available
+
+## Enhanced Dive Data Collection
+
+The parser now collects comprehensive dive information:
+
+- Basic Dive Info:
+  * Dive Time (seconds)
+  * Maximum and Average Depth (meters)
+  * Atmospheric Pressure (bar)
+
+- Temperature Data:
+  * Surface Temperature
+  * Minimum/Maximum Temperature
+  * Temperature Profile
+
+- Gas & Tank Information:
+  * Multiple Gas Mixes (O2, He, N2 percentages)
+  * Tank Volumes and Pressures
+  * Gas Usage Types
+
+- Decompression Info:
+  * Decompression Model Type
+  * Conservatism Settings
+  * Gradient Factors
+
+- Events & Warnings:
+  * Gas Switches
+  * Deco/Safety Stops
+  * Ascent Rate Warnings
+  * PPO2 Warnings
+  * User Bookmarks
+
+## Dive Log Management
+
+- Fingerprint-based dive identification
+- Skips previously downloaded dives
+- Progress tracking during downloads
+- Proper memory management for C callbacks
+- Thread-safe implementation
