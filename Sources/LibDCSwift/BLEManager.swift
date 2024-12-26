@@ -237,6 +237,15 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
         isPeripheralReady = false
         self.connectedDevice = nil
+
+        // Attempt to reconnect if this was a stored device
+        if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) {
+            logInfo("Attempting to reconnect to stored device")
+            _ = DeviceConfiguration.openBLEDevice(
+                name: storedDevice.name,
+                deviceAddress: storedDevice.uuid
+            )
+        }
     }
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
@@ -374,6 +383,18 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
     }
 
+    @objc public func connectToDevice(_ address: String) -> Bool {
+        guard let uuid = UUID(uuidString: address),
+              let peripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first else {
+            return false
+        }
+        
+        self.peripheral = peripheral
+        peripheral.delegate = self
+        centralManager.connect(peripheral, options: nil)
+        return true  // Return immediately, connection status will be handled by delegate
+    }
+
     private func updateTransferStats(_ newBytes: Int) {
         totalBytesReceived += newBytes
         
@@ -410,6 +431,17 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     private func isReadCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
         return characteristic.properties.contains(.notify) ||
                characteristic.properties.contains(.indicate)
+    }
+
+    public func connectToStoredDevice(_ uuid: String) -> Bool {
+        guard let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: uuid) else {
+            return false
+        }
+        
+        return DeviceConfiguration.openBLEDevice(
+            name: storedDevice.name,
+            deviceAddress: storedDevice.uuid
+        )
     }
 }
 

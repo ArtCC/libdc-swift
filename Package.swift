@@ -53,6 +53,7 @@ let package = Package(
                 "BLEManager.swift",
                 "Models/DeviceConfiguration.swift",
                 "Models/DiveData.swift",
+                "Models/StoredDevice.swift",
                 "ViewModels/DiveDataViewModel.swift",
                 "Parser/GenericParser.swift",
                 "DiveLogRetriever.swift"

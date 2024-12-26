@@ -1,7 +1,9 @@
 import Foundation
+import Clibdivecomputer
+import LibDCBridge
 
 @objc public class DeviceConfiguration: NSObject {
-    public enum DeviceFamily {
+    public enum DeviceFamily: String, Codable {
         case shearwaterPredator
         case shearwaterPetrel
         case suuntoEonSteel
@@ -102,6 +104,28 @@ import Foundation
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
         logDebug("Attempting to open BLE device: \(name) at address: \(deviceAddress)")
         
+        // Allocate device data first
+        let deviceData = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
+        deviceData.initialize(to: device_data_t())
+        
+        // Try to get stored device info first
+        if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: deviceAddress) {
+            logDebug("Found stored device configuration")
+            let openStatus = open_ble_device(
+                deviceData,
+                deviceAddress.cString(using: .utf8),
+                storedDevice.family.asDCFamily,
+                storedDevice.model
+            )
+            
+            if openStatus == DC_STATUS_SUCCESS {
+                logDebug("Successfully opened device using stored configuration")
+                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                return true
+            }
+            // If stored config fails, fall through to normal identification
+        }
+        
         var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
@@ -118,11 +142,6 @@ import Foundation
         
         logDebug("Device identified successfully - Family: \(family), Model: \(model)")
         
-        // Allocate device data
-        let deviceData = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
-        deviceData.initialize(to: device_data_t())
-        logDebug("Allocated device data pointer")
-        
         let openStatus = open_ble_device(
             deviceData,
             deviceAddress.cString(using: .utf8),
@@ -132,7 +151,6 @@ import Foundation
         
         if openStatus == DC_STATUS_SUCCESS {
             logDebug("Successfully opened device")
-            // Set the device data pointer in BLEManager
             CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
             return true
         } else {
