@@ -9,6 +9,7 @@
 #include <libdivecomputer/device.h>
 #include <libdivecomputer/common.h>
 #include <libdivecomputer/parser.h>
+#include <libdivecomputer/context.h>
 
 // Define callback types for Swift
 typedef void (*dc_sample_callback_t)(dc_sample_type_t type, 

@@ -82,7 +82,7 @@ import Foundation
     
     public struct ShearwaterPetrelModel {
         public static let petrel: UInt32 = 3
-        public static let petrel2: UInt32 = 3  
+        public static let petrel2: UInt32 = 3
         public static let nerd: UInt32 = 4
         public static let perdix: UInt32 = 5
         public static let perdixAI: UInt32 = 6

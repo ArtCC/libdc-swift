@@ -304,4 +304,12 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
     dc_descriptor_free(descriptor);
 
     return rc;
+}
+
+dc_status_t create_parser(dc_parser_t **out,
+                         dc_context_t *context,
+                         dc_descriptor_t *descriptor,
+                         const unsigned char data[],
+                         size_t size) {
+    return dc_parser_new2(out, context, descriptor, data, size);
 } 

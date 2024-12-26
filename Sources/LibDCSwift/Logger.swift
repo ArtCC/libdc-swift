@@ -39,61 +39,17 @@ public class Logger {
         minLevel = level
     }
     
+    private init() {
+        isEnabled = true
+        minLevel = .debug
+    }
+    
     public func log(_ message: String, level: LogLevel = .debug, file: String = #file, function: String = #function) {
-        guard isEnabled && level.rawValue >= minLevel.rawValue else { return }
-        
         let timestamp = dateFormatter.string(from: Date())
         let fileName = (file as NSString).lastPathComponent
         
-        // Skip routine BLE data logs
-        if message.starts(with: "Received data") {
-            // Only handle if it's a completion or error message
-            if message.contains("completed") || message.contains("error") {
-                handleBLEDataLog(message, timestamp)
-            }
-            return
-        }
-        
-        // Skip buffer logs unless explicitly requested and important
-        if message.contains("bytes, Buffer:") {
-            if shouldShowRawData && (message.contains("error") || message.contains("important")) {
-                let components = message.components(separatedBy: "Buffer: ")
-                if components.count > 1 {
-                    let hexData = components[1]
-                    print("\(level.prefix) [\(timestamp)] 📦 Buffer: \(formatHexData(hexData))")
-                }
-            }
-            return
-        }
-        
-        // Only log important BLE events
-        if fileName == "BLEManager.swift" {
-            let importantEvents = [
-                "Bluetooth is powered on",
-                "Successfully connected to",
-                "Failed to connect",
-                "Disconnected from",
-                "Write characteristic found",
-                "Notify characteristic found",
-                "Notification state updated"
-            ]
-            
-            if !importantEvents.contains(where: { message.contains($0) }) {
-                return
-            }
-        }
-        
-        // Always show dive-related logs and errors
-        if message.contains("🎯") || message.contains("📊") || message.contains("✅") || 
-           message.contains("❌") || level == .error {
-            print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
-            return
-        }
-        
-        // For other messages, only show info level and above by default
-        if level.rawValue >= LogLevel.info.rawValue {
-            print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
-        }
+        // Always print the message during debugging
+        print("\(level.prefix) [\(timestamp)] [\(fileName)] \(message)")
     }
     
     private func handleBLEDataLog(_ message: String, _ timestamp: String) {
@@ -141,6 +97,7 @@ public class Logger {
         dataCounter = 0
         totalBytesReceived = 0
     }
+
 }
 
 // Global convenience functions

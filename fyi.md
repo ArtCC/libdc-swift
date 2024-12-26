@@ -244,3 +244,64 @@ The parser now collects comprehensive dive information:
 - Progress tracking during downloads
 - Proper memory management for C callbacks
 - Thread-safe implementation
+
+## BLE Manager Features
+
+Device Persistence:
+- Automatically saves connected devices
+- Reconnects to last used device on startup
+- Handles unexpected disconnections with automatic reconnection
+- Provides manual "forget device" functionality
+- Persists device information across app restarts
+
+Device Configuration:
+- Automatic device family and model detection
+- BLE device initialization and configuration
+- Proper device context and descriptor management
+- Automatic cleanup on disconnection
+
+Observable Properties:
+- @Published properties:
+  - centralManager
+
+# LibDiveComputer Design Notes
+
+## Device Pointer Lifecycle
+The device pointer in libdivecomputer represents an active connection session, not persistent device identity. This is by design:
+
+1. When a device is closed via `dc_device_close()`:
+   - Callbacks are disabled
+   - Device-specific close function is called
+   - Device structure is deallocated
+   - Device pointer becomes invalid
+
+2. Device pointer MUST be re-initialized each time because:
+   - Device needs a fresh handshake sequence
+   - Internal state needs to be reset
+   - Memory needs to be properly allocated
+   - BLE connections need proper setup
+
+3. You cannot persist the device pointer because:
+   - It's deallocated on close
+   - The underlying BLE connection may change
+   - The device state may change
+   - The handshake needs to be redone
+
+### Best Practices
+For persistent device identity, store:
+- BLE peripheral identifier
+- Device configuration info (family, model)
+- Any other device-specific metadata needed for reconnection
+
+When reconnecting:
+1. Use stored identifiers to find the device
+2. Re-establish BLE connection
+3. Let libdivecomputer reinitialize a fresh device pointer
+
+## Files
+- device.c: Core device pointer management
+- suunto_eonsteel.c: Suunto-specific device handling
+
+# Memory Management Note
+
+Ensure that you only store the newly allocated device_data_t pointer if the device was opened successfully. If open_ble_device(...) or open_ble_device_with_descriptor(...) fail, deallocate immediately in Swift and reset any references. This prevents double-frees and keeps memory ownership consistent between Swift and C.
