@@ -89,25 +89,13 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     ]
     
     private var preferredService: CBService?
-
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
     
-    @objc public func connectToDevice(_ address: String) -> Bool {
-        guard let uuid = UUID(uuidString: address),
-              let peripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first else {
-            return false
-        }
-        
-        self.peripheral = peripheral
-        peripheral.delegate = self
-        centralManager.connect(peripheral, options: nil)
-        return true  // Return immediately, connection status will be handled by delegate
-    }
-    
-    @objc public func discoverServices() -> Bool {
+    @objc internal func discoverServices() -> Bool {
         guard let peripheral = self.peripheral else { return false }
         
         peripheral.discoverServices(nil)
@@ -120,7 +108,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return writeCharacteristic != nil && notifyCharacteristic != nil
     }
 
-    @objc public func enableNotifications() -> Bool {
+    @objc internal func enableNotifications() -> Bool {
         guard let notifyCharacteristic = self.notifyCharacteristic,
               let peripheral = self.peripheral else { return false }
         
@@ -234,6 +222,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             self.isPeripheralReady = true
             self.connectedDevice = peripheral
         }
+        peripheral.delegate = self
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {

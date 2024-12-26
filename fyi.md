@@ -305,3 +305,73 @@ When reconnecting:
 # Memory Management Note
 
 Ensure that you only store the newly allocated device_data_t pointer if the device was opened successfully. If open_ble_device(...) or open_ble_device_with_descriptor(...) fail, deallocate immediately in Swift and reset any references. This prevents double-frees and keeps memory ownership consistent between Swift and C.
+
+# Device Connection Patterns
+
+## Direct Device Opening vs BLEManager Connection
+
+There are two ways to establish a connection with a dive computer:
+
+1. Through BLEManager's connectToDevice:
+   - Handles CoreBluetooth connection
+   - Sets up BLE services and characteristics
+   - Manages BLE state
+
+2. Directly through DeviceConfiguration.openBLEDevice:
+   - Creates device context and iostream
+   - Opens device using libdivecomputer
+   - Handles device-specific initialization
+
+The direct approach works because:
+- The BLE connection is actually managed at the OS level
+- Once paired, the OS maintains the connection
+- libdivecomputer can access the BLE connection directly
+- The CoreBluetooth layer is optional for basic functionality
+
+## Device Pointer Persistence
+
+The device pointer CANNOT be persisted between app launches because:
+
+1. From suunto_eonsteel.c analysis:
+   ```c
+   dc_status_t suunto_eonsteel_device_open() {
+       // Creates new device context
+       // Initializes fresh magic and sequence numbers
+       // Performs mandatory handshake
+   }
+   ```
+
+2. Key limitations:
+   - Device pointer contains session-specific data (magic numbers, sequence)
+   - Handshake must be performed each time to establish protocol state
+   - Internal buffers and state must be fresh
+   - BLE connection details may change between sessions
+
+3. Proper approach:
+   - Store device identifier and metadata
+   - Re-establish connection when app launches
+   - Create fresh device pointer
+   - Perform new handshake sequence
+
+4. Why it can't work:
+   - Device pointer contains volatile session state
+   - Memory structures are tied to current process
+   - Protocol requires fresh initialization
+   - Security handshake must be redone
+
+## Best Practice for Fast Reconnection
+
+Instead of trying to persist the device pointer:
+
+1. Store persistent information:
+   - Device UUID/address
+   - Device family and model
+   - Last known settings
+
+2. On app launch:
+   - Use stored UUID to find device
+   - Create fresh device pointer
+   - Perform quick handshake
+   - Restore last known settings
+
+This provides fast reconnection while maintaining protocol integrity and security.
