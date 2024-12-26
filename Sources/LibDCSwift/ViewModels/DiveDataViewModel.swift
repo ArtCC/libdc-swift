@@ -19,7 +19,7 @@ public class DiveDataViewModel: ObservableObject {
         UserDefaults.standard.set(fingerprint, forKey: fingerprintKey)
     }
     
-    public enum DownloadProgress {
+    public enum DownloadProgress: Equatable {
         case idle
         case inProgress(count: Int)
         case completed
@@ -45,10 +45,25 @@ public class DiveDataViewModel: ObservableObject {
         let components = DateComponents(year: year, month: month, day: day,
                                      hour: hour, minute: minute, second: second)
         if let date = Calendar.current.date(from: components) {
-            let dive = DiveData(number: number,
-                              datetime: date,
-                              maxDepth: maxDepth,
-                              temperature: temperature)
+            let dive = DiveData(
+                number: number,
+                datetime: date,
+                divetime: 0,
+                maxDepth: maxDepth,
+                avgDepth: 0,
+                atmospheric: 1.0,
+                temperature: temperature,
+                tempSurface: temperature,
+                tempMinimum: temperature,
+                tempMaximum: temperature,
+                diveMode: DC_DIVEMODE_OC,
+                gasMixes: [],
+                tanks: [],
+                decoModel: nil,
+                location: nil,
+                profile: [],
+                events: []
+            )
             DispatchQueue.main.async {
                 self.dives.append(dive)
                 if case .inProgress = self.progress {
