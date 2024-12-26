@@ -83,4 +83,10 @@ public class DiveDataViewModel: ObservableObject {
             self.progress = .idle
         }
     }
+    
+    public func clearFingerprint() {
+        self.lastFingerprint = nil
+        UserDefaults.standard.removeObject(forKey: fingerprintKey)
+        objectWillChange.send()
+    }
 } 

@@ -54,7 +54,8 @@ let package = Package(
                 "Models/DeviceConfiguration.swift",
                 "Models/DiveData.swift",
                 "ViewModels/DiveDataViewModel.swift",
-                "Parser/GenericParser.swift"
+                "Parser/GenericParser.swift",
+                "DiveLogRetriever.swift"
             ],
             swiftSettings: [
                 .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
