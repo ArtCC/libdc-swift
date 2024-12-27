@@ -1,106 +1,94 @@
-# libdc-swift
+# LibDC-Swift
 
-This project integrates Bluetooth Low Energy (BLE) functionality with dive computers, specifically focusing on Suunto devices. It provides a bridge between Swift and C for using libdivecomputer, a user interface for scanning and connecting to BLE devices, and a manager for handling BLE operations.
-
-## Components
-
-### 1. BLEBridge
-
-**Files**: `BLEBridge.m` and `BLEBridge.h`
-
-The BLEBridge acts as an intermediary between Swift and C, managing:
-- BLE object lifecycle (creation and disposal)
-- Device connections and data transfer
-- Service and characteristic discovery
-- Notification handling
-- Read/write operations with timeouts
-
-### 2. ConfigureDC
-
-**Files**: `configuredc.c` and `configuredc.h`
-
-Handles dive computer configuration, particularly for Suunto EON Steel:
-- Device initialization and opening
-- BLE packet communication setup
-- HDLC protocol implementation
-- Data structure management
-
-### 3. BluetoothScanView
-
-**File**: `BluetoothScanView.swift`
-
-SwiftUI interface providing:
-- Device scanning and discovery
-- Connection management
-- Dive log retrieval
-- Status display and progress updates
-
-### 4. BLEManager
-
-**File**: `BLEManager.swift`
-
-Core Bluetooth operations manager handling:
-- Device scanning and connection
-- Service/characteristic discovery
-- Data transfer with timeout handling
-- Event management and state changes
-
-## Communication Protocol
-
-### HDLC Implementation
-- Frame markers: 0x7E
-- Data escaping for control characters
-- Checksum validation
-- Partial read support with timeouts
-  - 5-second timeout for partial reads
-  - 30-second timeout for full reads
-
-### Dive Log Structure
-1. Directory Listing
-   - Returns .LOG files
-   - XXXXXXXX.LOG format (X = hex timestamp)
-
-2. Log Format
-   - 4-byte timestamp (little-endian)
-   - SBEM (Suunto Binary Encoded Message) data
-   - Profile data, settings, and samples
-
-### BLE Communication
-- Notification-based data transfer (20-byte chunks)
-- Buffer management for data accumulation
-- Service UUID: "0000FEF5-0000-1000-8000-00805F9B34FB"
-- Write Characteristic: "C6339440-E62E-11E3-A5B3-0002A5D5C51B"
-- Notify Characteristic: "D0FD6B80-E62E-11E3-A2E9-0002A5D5C51B"
+A Swift framework for communicating with dive computers via Bluetooth Low Energy (BLE). Built on top of libdivecomputer, this package provides a modern Swift API for iOS and macOS applications to interact with various dive computers.
 
 ## Features
 
-### Fingerprint Management
-- Stores most recent dive fingerprint
-- Persists across app launches via UserDefaults
-- Enables incremental updates
-- Set on device connection
-- Updates after successful enumeration
-
-### Error Prevention
-- Safe BLE object lifecycle management
-- Thread-safe buffer operations
-- Proper cleanup on disconnection
-- Timeout handling for operations
+- 🔍 BLE device scanning and management
+- 📱 Support for Suunto and Shearwater dive computers
+- 📥 Efficient dive log retrieval with fingerprint system
+- 📊 Comprehensive dive data parsing
+- 🛠 Built-in error handling and logging
+- 📈 Progress tracking for long operations
 
 ## Requirements
-- iOS 14.0+
-- Swift 5.0+
-- libdivecomputer (linked as C library)
-- CoreBluetooth
-- SwiftUI
 
-## Future Improvements
-- Enhanced dive data parsing (depth, temperature)
-- Profile visualization
-- Local storage implementation
-- Incremental update optimization
-- Progress tracking per dive
-- Multi-device support
-- Enhanced event handling
-- Cancellation support for long operations
-- Memory dump capabilities for debugging
+- iOS 15.0+ / macOS 12.0+
+- Swift 5.10+
+- Xcode 15.0+
+
+## Installation
+
+Add LibDC-Swift to your project using Swift Package Manager:
+
+```swift
+dependencies: [
+    .package(url: "your-repo-url/LibDC-Swift.git", from: "1.0.0")
+]
+```
+
+## Quick Start
+
+```swift
+import LibDCSwift
+
+// Initialize and start scanning
+let manager = CoreBluetoothManager.shared
+manager.startScanning()
+
+// Connect to a device
+let success = DeviceConfiguration.openBLEDevice(
+    name: deviceName,
+    deviceAddress: deviceUUID
+)
+
+// Retrieve dive logs
+let viewModel = DiveDataViewModel()
+DiveLogRetriever.retrieveDiveLogs(
+    from: devicePtr,
+    deviceName: name,
+    viewModel: viewModel
+) { success in
+    if success {
+        // Handle retrieved dive logs
+    }
+}
+```
+
+## Supported Devices
+
+### Suunto
+- EON Steel / Black
+- EON Core
+- D5
+
+### Shearwater
+- Petrel / Petrel 2 / Petrel 3
+- Perdix / Perdix AI
+- NERD / NERD 2
+- Teric
+- Peregrine
+
+## Documentation
+
+For detailed documentation, please visit our [Wiki](wiki-link).
+
+Key topics covered in the wiki:
+- Detailed setup and configuration
+- Advanced usage examples
+- Data structures and handling
+- Error handling strategies
+- Logging system
+- Contribution guidelines
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## License
+
+This project is licensed under the GNU Lesser General Public License v2.1 - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+This project builds upon [libdivecomputer](https://libdivecomputer.org/), providing Swift bindings and additional functionality for iOS and macOS applications.
