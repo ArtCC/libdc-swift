@@ -54,6 +54,7 @@ let package = Package(
                 "Models/DeviceConfiguration.swift",
                 "Models/DiveData.swift",
                 "Models/StoredDevice.swift",
+                "Models/SampleData.swift",
                 "ViewModels/DiveDataViewModel.swift",
                 "Parser/GenericParser.swift",
                 "DiveLogRetriever.swift"

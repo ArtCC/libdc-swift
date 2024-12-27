@@ -16,5 +16,6 @@
 #include <libdivecomputer/parser.h>
 #include <libdivecomputer/iostream.h>
 #include <libdivecomputer/custom.h>
+#include <libdivecomputer/array.h>
 
 #endif /* LIBDC_SHIM_H */

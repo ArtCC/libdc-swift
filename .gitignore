@@ -43,3 +43,11 @@ Package.resolved
 *.xcworkspace
 *.xcodeproj
 .swiftpm/
+
+# SwiftUI Files
+Sources/LibDCSwift/BluetoothScanView.swift
+Sources/LibDCSwift/DeviceRow.swift
+Sources/LibDCSwift/ConnectedDeviceView.swift
+Sources/LibDCSwift/DiveLogSettingsView.swift
+Sources/LibDCSwift/AdvancedProfileDataType.swift
+Sources/LibDCSwift/DetailedDiveView.swift

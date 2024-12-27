@@ -114,46 +114,7 @@ public struct DiveEvent {
     }
 }
 
-public class GenericParser {
-    private class SampleData {
-        var maxDepth: Double = 0.0
-        var lastTemperature: Double = 0.0
-        var profile: [ProfilePoint] = []
-        var currentTime: TimeInterval = 0
-        var currentDepth: Double = 0
-        var currentTemperature: Double?
-        var currentPressure: Double?
-        
-        // Additional dive information
-        var divetime: TimeInterval = 0
-        var avgDepth: Double = 0
-        var atmospheric: Double = 0
-        var tempSurface: Double = 0
-        var tempMinimum: Double = Double.infinity
-        var tempMaximum: Double = -Double.infinity
-        var diveMode: dc_divemode_t = DC_DIVEMODE_OC
-        var gasMixes: [GasMix] = []
-        var tanks: [TankInfo] = []
-        var decoModel: DecoModel?
-        var location: Location?
-        
-        // Add events array
-        var events: [DiveEvent] = []
-        
-        func addCurrentPoint() {
-            profile.append(ProfilePoint(
-                time: currentTime,
-                depth: currentDepth,
-                temperature: currentTemperature,
-                pressure: currentPressure
-            ))
-        }
-        
-        func addEvent(type: parser_sample_event_t, time: TimeInterval, value: UInt32, flags: UInt32) {
-            events.append(DiveEvent(type: type, time: time, value: value, flags: flags))
-        }
-    }
-    
+public class GenericParser {    
     private static func getField<T>(_ parser: OpaquePointer?, type: dc_field_type_t, flags: UInt32 = 0) -> T? {
         let value = UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<T>.size, alignment: MemoryLayout<T>.alignment)
         defer { value.deallocate() }
@@ -165,10 +126,35 @@ public class GenericParser {
     }
     
     private class SampleDataWrapper {
-        var data: SampleData
+        var data = SampleData()
         
-        init() {
-            self.data = SampleData()
+        func addProfilePoint() {
+            let point = DiveProfilePoint(
+                time: data.time,
+                depth: data.depth,
+                temperature: data.temperature,
+                pressure: data.pressure.last?.value
+            )
+            data.profile.append(point)
+            
+            // Track temperature ranges
+            if let temp = data.temperature {
+                data.tempMinimum = min(data.tempMinimum, temp)
+                data.tempMaximum = max(data.tempMaximum, temp)
+                data.lastTemperature = temp
+                // Store surface temperature if not set
+                if data.tempSurface == 0 {
+                    data.tempSurface = temp
+                }
+            }
+        }
+        
+        func addTank(_ tank: dc_tank_t) {
+            data.tanks.append(GenericParser.convertTank(tank))
+        }
+        
+        func setDecoModel(_ model: dc_decomodel_t) {
+            data.decoModel = GenericParser.convertDecoModel(model)
         }
     }
     
@@ -180,20 +166,26 @@ public class GenericParser {
         dataSize: Int,
         context: OpaquePointer? = nil
     ) throws -> DiveData {
+        logInfo("Creating parser for family: \(family), model: \(model), size: \(dataSize)")
+        
         var parser: OpaquePointer?
         var rc: dc_status_t
         
         // Create parser based on device family
         switch family {
         case .suuntoEonSteel:
+            logInfo("Using Suunto EON Steel parser")
             rc = suunto_eonsteel_parser_create(&parser, context, diveData, dataSize, 0)
         case .shearwaterPetrel:
+            logInfo("Using Shearwater Petrel parser")
             rc = shearwater_petrel_parser_create(&parser, context, diveData, dataSize)
         case .shearwaterPredator:
+            logInfo("Using Shearwater Predator parser")
             rc = shearwater_predator_parser_create(&parser, context, diveData, dataSize)
         }
         
         guard rc == DC_STATUS_SUCCESS, parser != nil else {
+            logError("❌ Parser creation failed with status: \(rc)")
             throw ParserError.parserCreationFailed(rc)
         }
         
@@ -215,62 +207,70 @@ public class GenericParser {
         let wrapperPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(wrapper).toOpaque())
         
         let sampleCallback: dc_sample_callback_t = { type, valuePtr, userData in
-            guard let userData = userData else { return }
+            guard let userData = userData,
+                  let value = valuePtr?.pointee else { return }
             
-            // Convert back from UnsafeMutableRawPointer to SampleDataWrapper
             let wrapper = Unmanaged<SampleDataWrapper>.fromOpaque(userData).takeUnretainedValue()
-            guard let value = valuePtr?.pointee else { return }
             
             switch type {
             case DC_SAMPLE_TIME:
-                wrapper.data.currentTime = TimeInterval(value.time) / 1000.0
+                wrapper.data.time = TimeInterval(value.time) / 1000.0
+                wrapper.addProfilePoint()
                 
             case DC_SAMPLE_DEPTH:
-                wrapper.data.currentDepth = value.depth
-                if value.depth > wrapper.data.maxDepth {
-                    wrapper.data.maxDepth = value.depth
-                }
-                
-            case DC_SAMPLE_TEMPERATURE:
-                wrapper.data.currentTemperature = value.temperature
-                wrapper.data.lastTemperature = value.temperature
+                wrapper.data.depth = value.depth
+                wrapper.data.maxDepth = max(wrapper.data.maxDepth, value.depth)
                 
             case DC_SAMPLE_PRESSURE:
-                wrapper.data.currentPressure = value.pressure.value
+                wrapper.data.pressure.append((
+                    tank: Int(value.pressure.tank),
+                    value: value.pressure.value
+                ))
+                
+            case DC_SAMPLE_TEMPERATURE:
+                wrapper.data.temperature = value.temperature
                 
             case DC_SAMPLE_EVENT:
-                wrapper.data.addEvent(
+                wrapper.data.event = SampleData.Event(
                     type: parser_sample_event_t(value.event.type),
-                    time: wrapper.data.currentTime,
                     value: value.event.value,
                     flags: value.event.flags
                 )
                 
-            case DC_SAMPLE_DECO:
-                // Decompression information
-                if value.deco.type == DC_DECO_DECOSTOP.rawValue {
-                    logInfo("Deco stop at \(value.deco.depth)m for \(value.deco.time) minutes")
-                }
+            case DC_SAMPLE_RBT:
+                wrapper.data.rbt = value.rbt
+                
+            case DC_SAMPLE_HEARTBEAT:
+                wrapper.data.heartbeat = value.heartbeat
+                
+            case DC_SAMPLE_BEARING:
+                wrapper.data.bearing = value.bearing
+                
+            case DC_SAMPLE_SETPOINT:
+                wrapper.data.setpoint = value.setpoint
                 
             case DC_SAMPLE_PPO2:
-                // PPO2 readings from sensors
-                let sensor = value.ppo2.sensor
-                logInfo("PPO2 sensor \(sensor): \(value.ppo2.value) bar")
+                wrapper.data.ppo2.append((
+                    sensor: value.ppo2.sensor,
+                    value: value.ppo2.value
+                ))
                 
             case DC_SAMPLE_CNS:
-                // CNS percentage
-                logInfo("CNS: \(value.cns)%")
+                wrapper.data.cns = value.cns * 100.0  // Convert to percentage
+                
+            case DC_SAMPLE_DECO:
+                wrapper.data.deco = SampleData.DecoData(
+                    type: dc_deco_type_t(rawValue: value.deco.type),
+                    depth: value.deco.depth,
+                    time: value.deco.time,
+                    tts: value.deco.tts
+                )
                 
             case DC_SAMPLE_GASMIX:
-                // Gas mix changes
-                logInfo("Switched to gas mix \(value.gasmix)")
+                wrapper.data.gasmix = Int(value.gasmix)
                 
             default:
                 break
-            }
-            
-            if type == DC_SAMPLE_TIME {
-                wrapper.data.addCurrentPoint()
             }
         }
         
@@ -281,6 +281,20 @@ public class GenericParser {
         
         guard samplesStatus == DC_STATUS_SUCCESS else {
             throw ParserError.sampleProcessingFailed(samplesStatus)
+        }
+        
+        // Get tank information
+        if let tankCount: UInt32 = getField(parser, type: DC_FIELD_TANK_COUNT) {
+            for i in 0..<tankCount {
+                if var tank: dc_tank_t = getField(parser, type: DC_FIELD_TANK, flags: UInt32(i)) {
+                    wrapper.addTank(tank)
+                }
+            }
+        }
+        
+        // Get deco model
+        if var decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
+            wrapper.setDecoModel(decoModel)
         }
         
         // Create date from components
@@ -300,20 +314,85 @@ public class GenericParser {
         return DiveData(
             number: diveNumber,
             datetime: date,
-            divetime: wrapper.data.divetime,
             maxDepth: wrapper.data.maxDepth,
-            avgDepth: wrapper.data.avgDepth,
-            atmospheric: wrapper.data.atmospheric,
+            divetime: wrapper.data.divetime,
             temperature: wrapper.data.lastTemperature,
-            tempSurface: wrapper.data.tempSurface,
-            tempMinimum: wrapper.data.tempMinimum,
-            tempMaximum: wrapper.data.tempMaximum,
-            diveMode: wrapper.data.diveMode,
-            gasMixes: wrapper.data.gasMixes,
+            profile: wrapper.data.profile,
+            tankPressure: wrapper.data.pressure.map { $0.value },
+            gasMix: wrapper.data.gasmix,
+            gasMixCount: wrapper.data.gasMixes.count,
+            salinity: wrapper.data.salinity,
+            atmospheric: wrapper.data.atmospheric,
+            surfaceTemperature: wrapper.data.tempSurface,
+            minTemperature: wrapper.data.tempMinimum,
+            maxTemperature: wrapper.data.tempMaximum,
+            tankCount: wrapper.data.tanks.count,
             tanks: wrapper.data.tanks,
+            diveMode: wrapper.data.diveMode,
             decoModel: wrapper.data.decoModel,
             location: wrapper.data.location,
-            profile: wrapper.data.profile
+            rbt: wrapper.data.rbt,
+            heartbeat: wrapper.data.heartbeat,
+            bearing: wrapper.data.bearing,
+            setpoint: wrapper.data.setpoint,
+            ppo2Readings: wrapper.data.ppo2,
+            cns: wrapper.data.cns,
+            decoStop: wrapper.data.deco.map { deco in
+                DiveData.DecoStop(
+                    depth: deco.depth,
+                    time: TimeInterval(deco.time),
+                    type: Int(deco.type.rawValue)
+                )
+            }
+        )
+    }
+    
+    private static func convertTank(_ tank: dc_tank_t) -> DiveData.Tank {
+        return DiveData.Tank(
+            volume: tank.volume,
+            workingPressure: tank.workpressure,
+            beginPressure: tank.beginpressure,
+            endPressure: tank.endpressure,
+            gasMix: Int(tank.gasmix),
+            usage: convertUsage(tank.usage)
+        )
+    }
+    
+    private static func convertUsage(_ usage: dc_usage_t) -> DiveData.Tank.Usage {
+        switch usage {
+        case DC_USAGE_NONE:
+            return .none
+        case DC_USAGE_OXYGEN:
+            return .oxygen
+        case DC_USAGE_DILUENT:
+            return .diluent
+        case DC_USAGE_SIDEMOUNT:
+            return .sidemount
+        default:
+            return .none
+        }
+    }
+    
+    private static func convertDecoModel(_ model: dc_decomodel_t) -> DiveData.DecoModel {
+        let type: DiveData.DecoModel.DecoType
+        switch model.type {
+        case DC_DECOMODEL_BUHLMANN:
+            type = .buhlmann
+        case DC_DECOMODEL_VPM:
+            type = .vpm
+        case DC_DECOMODEL_RGBM:
+            type = .rgbm
+        case DC_DECOMODEL_DCIEM:
+            type = .dciem
+        default:
+            type = .none
+        }
+        
+        return DiveData.DecoModel(
+            type: type,
+            conservatism: Int(model.conservatism),
+            gfLow: model.params.gf.low,
+            gfHigh: model.params.gf.high
         )
     }
 } 

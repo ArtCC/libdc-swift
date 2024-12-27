@@ -34,6 +34,7 @@ public class DiveLogRetriever {
         // Store fingerprint of the most recent dive
         let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
         context.lastFingerprint = fingerprintData
+        logInfo("📍 New dive fingerprint: \(fingerprintData.hexString)")
         
         // Increment counter before using it
         context.logCount += 1
@@ -50,6 +51,7 @@ public class DiveLogRetriever {
         
         // Get device family and model
         if let deviceInfo = DeviceConfiguration.identifyDevice(name: context.deviceName) {
+            logInfo("🔍 Device identified as family: \(deviceInfo.family), model: \(deviceInfo.model)")
             do {
                 let diveData = try GenericParser.parseDiveData(
                     family: deviceInfo.family,
@@ -61,14 +63,15 @@ public class DiveLogRetriever {
                 
                 DispatchQueue.main.async {
                     context.viewModel.dives.append(diveData)
+                    logInfo("✅ Successfully added dive #\(currentDiveNumber) to view model")
                 }
             } catch {
                 logError("❌ Failed to parse dive #\(currentDiveNumber): \(error)")
-                return 0 // Return 0 on parsing error
+                return 0
             }
         } else {
             logError("❌ Failed to identify device family for \(context.deviceName)")
-            return 0 // Return 0 if device family identification fails
+            return 0
         }
         
         return 1 // Return 1 on successful processing
@@ -92,9 +95,10 @@ public class DiveLogRetriever {
         
         // Set the stored fingerprint if we have one
         if let storedFingerprint = viewModel.lastFingerprint {
+            logInfo("📍 Setting stored fingerprint: \(storedFingerprint.hexString)")
             let status = dc_device_set_fingerprint(
                 device,
-                Array(storedFingerprint), // Convert Data to [UInt8]
+                Array(storedFingerprint),
                 UInt32(storedFingerprint.count)
             )
             
@@ -103,6 +107,8 @@ public class DiveLogRetriever {
             } else {
                 logInfo("✅ Set fingerprint, will only download new dives")
             }
+        } else {
+            logInfo("📍 No stored fingerprint found, will download all dives")
         }
         
         let context = CallbackContext(
@@ -116,19 +122,28 @@ public class DiveLogRetriever {
         DispatchQueue.global(qos: .userInitiated).async {
             logInfo("🔄 Starting dive enumeration...")
             let status = dc_device_foreach(device, diveCallbackClosure, contextPtr)
+            logInfo("📊 Dive enumeration completed with status: \(status)")
             
             // Release the context after we're done
             Unmanaged<CallbackContext>.fromOpaque(contextPtr).release()
             
             DispatchQueue.main.async {
                 if status == DC_STATUS_SUCCESS {
-                    if let lastFingerprint = context.lastFingerprint {
-                        viewModel.saveFingerprint(lastFingerprint)
+                    if context.logCount > 0 {
+                        if let lastFingerprint = context.lastFingerprint {
+                            viewModel.saveFingerprint(lastFingerprint)
+                            logInfo("💾 Saved new fingerprint: \(lastFingerprint.hexString)")
+                        }
+                        viewModel.progress = .completed
+                        completion(true)
+                    } else {
+                        logWarning("⚠️ Dive enumeration successful but no dives found")
+                        viewModel.progress = .completed
+                        completion(true)
                     }
-                    viewModel.progress = .completed
-                    completion(true)
                 } else {
                     let errorMsg = "Error enumerating dives: \(status)"
+                    logError("❌ \(errorMsg)")
                     viewModel.setError(errorMsg)
                     completion(false)
                 }
@@ -147,11 +162,19 @@ public class DiveLogRetriever {
             switch viewModel.progress {
             case .completed:
                 timer.invalidate()
+                logInfo("Progress timer invalidated - Download completed")
             case .error:
                 timer.invalidate()
+                logInfo("Progress timer invalidated - Error occurred")
             default:
                 break
             }
         }
     }
 } 
+
+extension Data {
+    var hexString: String {
+        return map { String(format: "%02hhx", $0) }.joined()
+    }
+}

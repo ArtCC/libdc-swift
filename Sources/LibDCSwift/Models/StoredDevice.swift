@@ -2,13 +2,13 @@ import Foundation
 import CoreBluetooth
 
 public class StoredDevice: Codable {
-   let uuid: String
-   let name: String
-   let family: DeviceConfiguration.DeviceFamily
-   let model: UInt32
-   let lastConnected: Date
+   public let uuid: String
+   public let name: String
+   public let family: DeviceConfiguration.DeviceFamily
+   public let model: UInt32
+   public let lastConnected: Date
    
-   init(uuid: String, name: String, family: DeviceConfiguration.DeviceFamily, model: UInt32) {
+   public init(uuid: String, name: String, family: DeviceConfiguration.DeviceFamily, model: UInt32) {
        self.uuid = uuid
        self.name = name
        self.family = family

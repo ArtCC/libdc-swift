@@ -3,6 +3,7 @@
 #include <libdivecomputer/device.h>
 #include <libdivecomputer/descriptor.h>
 #include <libdivecomputer/iostream.h>
+#include <libdivecomputer/parser.h>
 #include "iostream-private.h"
 #include <stdio.h>
 #include <string.h>
@@ -192,6 +193,8 @@ static void close_device_data(device_data_t *data) {
         dc_context_free(data->context);
         data->context = NULL;
     }
+    // The descriptor is freed by the caller
+    data->descriptor = NULL;
 }
 
 dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor) {
@@ -200,6 +203,10 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
     if (!data || !devaddr || !descriptor) {
         return DC_STATUS_INVALIDARGS;
     }
+
+    printf("Opening device with descriptor - type: %d, model: %d\n",
+           dc_descriptor_get_type(descriptor),
+           dc_descriptor_get_model(descriptor));
 
     // Initialize all pointers to NULL
     memset(data, 0, sizeof(device_data_t));
@@ -235,6 +242,9 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
         close_device_data(data);
         return rc;
     }
+
+    // Store the descriptor (without reference counting)
+    data->descriptor = descriptor;
 
     return rc;
 }
@@ -305,11 +315,3 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
 
     return rc;
 }
-
-dc_status_t create_parser(dc_parser_t **out,
-                         dc_context_t *context,
-                         dc_descriptor_t *descriptor,
-                         const unsigned char data[],
-                         size_t size) {
-    return dc_parser_new2(out, context, descriptor, data, size);
-} 

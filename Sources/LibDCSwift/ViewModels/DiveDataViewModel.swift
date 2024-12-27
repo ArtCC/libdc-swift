@@ -9,14 +9,30 @@ public class DiveDataViewModel: ObservableObject {
     private let fingerprintKey = "lastDiveFingerprint"
     
     public init() {
+        loadFingerprint()
+    }
+    
+    private func loadFingerprint() {
         if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKey) {
-            self.lastFingerprint = savedFingerprint
+            DispatchQueue.main.async {
+                self.lastFingerprint = savedFingerprint
+            }
         }
     }
     
     public func saveFingerprint(_ fingerprint: Data) {
-        self.lastFingerprint = fingerprint
-        UserDefaults.standard.set(fingerprint, forKey: fingerprintKey)
+        DispatchQueue.main.async {
+            self.lastFingerprint = fingerprint
+            UserDefaults.standard.set(fingerprint, forKey: self.fingerprintKey)
+        }
+    }
+    
+    public func clearFingerprint() {
+        DispatchQueue.main.async {
+            self.lastFingerprint = nil
+            UserDefaults.standard.removeObject(forKey: self.fingerprintKey)
+            self.objectWillChange.send()
+        }
     }
     
     public enum DownloadProgress: Equatable {
@@ -48,21 +64,30 @@ public class DiveDataViewModel: ObservableObject {
             let dive = DiveData(
                 number: number,
                 datetime: date,
-                divetime: 0,
                 maxDepth: maxDepth,
-                avgDepth: 0,
-                atmospheric: 1.0,
+                divetime: 0,
                 temperature: temperature,
-                tempSurface: temperature,
-                tempMinimum: temperature,
-                tempMaximum: temperature,
-                diveMode: DC_DIVEMODE_OC,
-                gasMixes: [],
-                tanks: [],
+                profile: [],
+                tankPressure: [],
+                gasMix: nil,
+                gasMixCount: nil,
+                salinity: nil,
+                atmospheric: 1.0,
+                surfaceTemperature: nil,
+                minTemperature: nil,
+                maxTemperature: nil,
+                tankCount: nil,
+                tanks: nil,
+                diveMode: .openCircuit,
                 decoModel: nil,
                 location: nil,
-                profile: [],
-                events: []
+                rbt: nil,
+                heartbeat: nil,
+                bearing: nil,
+                setpoint: nil,
+                ppo2Readings: [],
+                cns: nil,
+                decoStop: nil
             )
             DispatchQueue.main.async {
                 self.dives.append(dive)
@@ -99,9 +124,14 @@ public class DiveDataViewModel: ObservableObject {
         }
     }
     
-    public func clearFingerprint() {
-        self.lastFingerprint = nil
-        UserDefaults.standard.removeObject(forKey: fingerprintKey)
-        objectWillChange.send()
+    public func setDetailedError(_ message: String, status: dc_status_t? = nil) {
+        let errorMessage = if let status = status {
+            "\(message) (Status: \(status))"
+        } else {
+            message
+        }
+        DispatchQueue.main.async {
+            self.progress = .error(errorMessage)
+        }
     }
 } 

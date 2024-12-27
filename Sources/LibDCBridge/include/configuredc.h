@@ -17,6 +17,7 @@ typedef struct {
     dc_device_t *device;
     dc_context_t *context;
     dc_iostream_t *iostream;
+    dc_descriptor_t *descriptor;
     
     int have_devinfo;
     dc_event_devinfo_t devinfo;

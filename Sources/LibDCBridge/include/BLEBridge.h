@@ -9,6 +9,23 @@
 #include "libdivecomputer/parser.h"
 #include "configuredc.h"
 
+// Array helper functions
+static inline uint16_t array_uint16_le(const unsigned char array[]) {
+    return array[0] | (array[1] << 8);
+}
+
+static inline uint32_t array_uint32_le(const unsigned char array[]) {
+    return array[0] | (array[1] << 8) | (array[2] << 16) | (array[3] << 24);
+}
+
+static inline uint16_t array_uint16_be(const unsigned char array[]) {
+    return (array[0] << 8) | array[1];
+}
+
+static inline uint32_t array_uint32_be(const unsigned char array[]) {
+    return (array[0] << 24) | (array[1] << 16) | (array[2] << 8) | array[3];
+}
+
 // BLE object
 typedef struct ble_object {
     void* manager;

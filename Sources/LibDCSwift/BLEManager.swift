@@ -155,7 +155,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
         
-        logDebug("Writing \(data.count) bytes: \(data.hexEncodedString())")
+        // logDebug("Writing \(data.count) bytes: \(data.hexEncodedString())")
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
         return true
     }
