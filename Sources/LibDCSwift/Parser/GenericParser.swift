@@ -286,14 +286,15 @@ public class GenericParser {
         // Get tank information
         if let tankCount: UInt32 = getField(parser, type: DC_FIELD_TANK_COUNT) {
             for i in 0..<tankCount {
-                if var tank: dc_tank_t = getField(parser, type: DC_FIELD_TANK, flags: UInt32(i)) {
+                if let tank: dc_tank_t = getField(parser, type: DC_FIELD_TANK, flags: UInt32(i)) {
                     wrapper.addTank(tank)
                 }
             }
         }
         
         // Get deco model
-        if var decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
+        if let decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
+            logInfo("The decoModel parsed is (decoModel)")
             wrapper.setDecoModel(decoModel)
         }
         

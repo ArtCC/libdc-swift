@@ -37,20 +37,23 @@ public class DiveDataViewModel: ObservableObject {
     
     public enum DownloadProgress: Equatable {
         case idle
-        case inProgress(count: Int)
+        case inProgress(current: Int)
         case completed
         case error(String)
+        case cancelled
         
-        public var description: String {
+        var description: String {
             switch self {
             case .idle:
-                return "Ready to download"
-            case .inProgress(let count):
-                return "Downloading dive \(max(1,count))"
+                return "Ready"
+            case .inProgress(let current):
+                return "Downloading dive \(current)"
             case .completed:
-                return "Download completed"
+                return "Completed"
             case .error(let message):
                 return "Error: \(message)"
+            case .cancelled:
+                return "Cancelled"
             }
         }
     }
@@ -92,7 +95,7 @@ public class DiveDataViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self.dives.append(dive)
                 if case .inProgress = self.progress {
-                    self.progress = .inProgress(count: self.dives.count)
+                    self.progress = .inProgress(current: self.dives.count)
                 }
             }
         }
@@ -104,9 +107,9 @@ public class DiveDataViewModel: ObservableObject {
         }
     }
     
-    public func updateProgress(current: Int, total: Int?) {
+    public func updateProgress(current: Int) {
         DispatchQueue.main.async {
-            self.progress = .inProgress(count: max(1,current))
+            self.progress = .inProgress(current: current)
         }
     }
     

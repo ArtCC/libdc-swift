@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public class DiveLogRetriever {
     private class CallbackContext {
@@ -43,10 +46,7 @@ public class DiveLogRetriever {
         
         // Update progress with the current dive number
         DispatchQueue.main.async {
-            context.viewModel.updateProgress(
-                current: currentDiveNumber,
-                total: nil
-            )
+            context.viewModel.updateProgress(current: currentDiveNumber)
         }
         
         // Get device family and model
@@ -93,6 +93,17 @@ public class DiveLogRetriever {
             return
         }
         
+        // Platform-specific background task handling
+        #if os(iOS)
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+            if backgroundTaskID != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                backgroundTaskID = .invalid
+            }
+        }
+        #endif
+        
         // Set the stored fingerprint if we have one
         if let storedFingerprint = viewModel.lastFingerprint {
             logInfo("📍 Setting stored fingerprint: \(storedFingerprint.hexString)")
@@ -116,7 +127,6 @@ public class DiveLogRetriever {
             deviceName: deviceName
         )
         
-        // Convert context to UnsafeMutableRawPointer
         let contextPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(context).toOpaque())
         
         DispatchQueue.global(qos: .userInitiated).async {
@@ -147,6 +157,14 @@ public class DiveLogRetriever {
                     viewModel.setError(errorMsg)
                     completion(false)
                 }
+                
+                #if os(iOS)
+                // End background task if it was started
+                if backgroundTaskID != .invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    backgroundTaskID = .invalid
+                }
+                #endif
             }
         }
         
@@ -160,12 +178,9 @@ public class DiveLogRetriever {
             }
             
             switch viewModel.progress {
-            case .completed:
+            case .completed, .error, .cancelled:
                 timer.invalidate()
-                logInfo("Progress timer invalidated - Download completed")
-            case .error:
-                timer.invalidate()
-                logInfo("Progress timer invalidated - Error occurred")
+                logInfo("Progress timer invalidated - \(viewModel.progress)")
             default:
                 break
             }
