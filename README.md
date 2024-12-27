@@ -23,7 +23,7 @@ Add LibDC-Swift to your project using Swift Package Manager:
 
 ```swift
 dependencies: [
-    .package(url: "your-repo-url/LibDC-Swift.git", from: "1.0.0")
+    .package(url: "latishab/LibDC-Swift.git", from: "1.0.0")
 ]
 ```
 
