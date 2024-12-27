@@ -137,6 +137,9 @@ public class GenericParser {
             )
             data.profile.append(point)
             
+            // Update maximum time
+            data.maxTime = max(data.maxTime, data.time)
+            
             // Track temperature ranges
             if let temp = data.temperature {
                 data.tempMinimum = min(data.tempMinimum, temp)
@@ -294,7 +297,7 @@ public class GenericParser {
         
         // Get deco model
         if let decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
-            logInfo("The decoModel parsed is (decoModel)")
+            logInfo("The decoModel parsed is \(decoModel)")
             wrapper.setDecoModel(decoModel)
         }
         
@@ -316,7 +319,7 @@ public class GenericParser {
             number: diveNumber,
             datetime: date,
             maxDepth: wrapper.data.maxDepth,
-            divetime: wrapper.data.divetime,
+            divetime: wrapper.data.maxTime,
             temperature: wrapper.data.lastTemperature,
             profile: wrapper.data.profile,
             tankPressure: wrapper.data.pressure.map { $0.value },

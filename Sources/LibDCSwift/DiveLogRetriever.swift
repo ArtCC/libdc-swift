@@ -10,6 +10,7 @@ public class DiveLogRetriever {
         let viewModel: DiveDataViewModel
         var lastFingerprint: Data?
         let deviceName: String
+        var isCancelled: Bool = false  
         
         init(viewModel: DiveDataViewModel, deviceName: String) {
             self.viewModel = viewModel
@@ -47,6 +48,7 @@ public class DiveLogRetriever {
         // Update progress with the current dive number
         DispatchQueue.main.async {
             context.viewModel.updateProgress(current: currentDiveNumber)
+            context.viewModel.status = "Downloading dive \(currentDiveNumber)"
         }
         
         // Get device family and model
@@ -77,6 +79,10 @@ public class DiveLogRetriever {
         return 1 // Return 1 on successful processing
     }
     
+    #if os(iOS)
+    private static var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    #endif
+    
     public static func retrieveDiveLogs(
         from devicePtr: UnsafeMutablePointer<device_data_t>,
         deviceName: String,
@@ -84,6 +90,18 @@ public class DiveLogRetriever {
         onProgress: ((Int, Int) -> Void)? = nil,
         completion: @escaping (Bool) -> Void
     ) {
+        #if os(iOS)
+        // Start background task
+        backgroundTask = UIApplication.shared.beginBackgroundTask { [self] in
+            // If background task expires, clean up and mark as failed
+            endBackgroundTask()
+            DispatchQueue.main.async {
+                viewModel.setError("Background task expired")
+                completion(false)
+            }
+        }
+        #endif
+        
         viewModel.clear()
         viewModel.progress = .idle
         
@@ -92,17 +110,6 @@ public class DiveLogRetriever {
             completion(false)
             return
         }
-        
-        // Platform-specific background task handling
-        #if os(iOS)
-        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask {
-            if backgroundTaskID != .invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                backgroundTaskID = .invalid
-            }
-        }
-        #endif
         
         // Set the stored fingerprint if we have one
         if let storedFingerprint = viewModel.lastFingerprint {
@@ -131,6 +138,12 @@ public class DiveLogRetriever {
         
         DispatchQueue.global(qos: .userInitiated).async {
             logInfo("🔄 Starting dive enumeration...")
+            
+            // Set QoS for this thread
+            if #available(iOS 10.0, *) {
+                Thread.current.qualityOfService = .userInitiated
+            }
+            
             let status = dc_device_foreach(device, diveCallbackClosure, contextPtr)
             logInfo("📊 Dive enumeration completed with status: \(status)")
             
@@ -159,17 +172,13 @@ public class DiveLogRetriever {
                 }
                 
                 #if os(iOS)
-                // End background task if it was started
-                if backgroundTaskID != .invalid {
-                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                    backgroundTaskID = .invalid
-                }
+                endBackgroundTask()
                 #endif
             }
         }
         
-        // Update timer check
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+        // Create a strong reference to the timer
+        let progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
             if devicePtr.pointee.have_progress != 0 {
                 onProgress?(
                     Int(devicePtr.pointee.progress.current),
@@ -185,7 +194,19 @@ public class DiveLogRetriever {
                 break
             }
         }
+        
+        // Keep the timer referenced
+        RunLoop.current.add(progressTimer, forMode: .common)
     }
+    
+    #if os(iOS)
+    private static func endBackgroundTask() {
+        if backgroundTask != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTask)
+            backgroundTask = .invalid
+        }
+    }
+    #endif
 } 
 
 extension Data {

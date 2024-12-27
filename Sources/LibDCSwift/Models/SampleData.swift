@@ -9,6 +9,7 @@ public struct SampleData {
     var maxDepth: Double = 0           // Maximum depth reached
     var avgDepth: Double = 0           // Average depth
     var lastTemperature: Double = 0    // Last recorded temperature
+    var maxTime: TimeInterval = 0  // Track the maximum time
     
     // Temperature tracking
     var tempSurface: Double = 0        // Surface temperature

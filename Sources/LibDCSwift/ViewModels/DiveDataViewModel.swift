@@ -6,6 +6,7 @@ public class DiveDataViewModel: ObservableObject {
     @Published public var status: String = ""
     @Published public var progress: DownloadProgress = .idle
     @Published public var lastFingerprint: Data?
+    @Published public var isRetrievingLogs: Bool = false
     private let fingerprintKey = "lastDiveFingerprint"
     
     public init() {
@@ -42,7 +43,7 @@ public class DiveDataViewModel: ObservableObject {
         case error(String)
         case cancelled
         
-        var description: String {
+        public var description: String {
             switch self {
             case .idle:
                 return "Ready"
@@ -109,6 +110,7 @@ public class DiveDataViewModel: ObservableObject {
     
     public func updateProgress(current: Int) {
         DispatchQueue.main.async {
+            self.status = "Downloading dive \(current)"
             self.progress = .inProgress(current: current)
         }
     }
@@ -124,6 +126,7 @@ public class DiveDataViewModel: ObservableObject {
             self.dives.removeAll()
             self.status = ""
             self.progress = .idle
+            self.isRetrievingLogs = false
         }
     }
     
@@ -135,6 +138,18 @@ public class DiveDataViewModel: ObservableObject {
         }
         DispatchQueue.main.async {
             self.progress = .error(errorMessage)
+        }
+    }
+    
+    public func startRetrieval() {
+        DispatchQueue.main.async {
+            self.isRetrievingLogs = true
+        }
+    }
+    
+    public func endRetrieval() {
+        DispatchQueue.main.async {
+            self.isRetrievingLogs = false
         }
     }
 } 
