@@ -1,4 +1,60 @@
 import Foundation
+import SwiftUI
+
+public enum DiveEvent: Hashable {
+    case ascent
+    case violation
+    case decoStop
+    case gasChange
+    case bookmark
+    case safetyStop(mandatory: Bool)
+    case ceiling
+    case po2
+    case deepStop
+    
+    public var color: Color {
+        switch self {
+        case .ascent: return .red  // Warning color for ascent rate
+        case .violation: return .red  // Warning color for violations
+        case .decoStop: return .orange  // Important but not critical
+        case .gasChange: return .blue  // Informational
+        case .bookmark: return .yellow  // User marker
+        case .safetyStop: return .green  // Good practice
+        case .ceiling: return .red  // Warning color for ceiling violations
+        case .po2: return .red  // Warning color for PPO2
+        case .deepStop: return .purple  // Distinct from regular stops
+        }
+    }
+    
+    public var description: String {
+        switch self {
+        case .ascent: return "Ascent Rate Warning"
+        case .violation: return "Violation"
+        case .decoStop: return "Deco Stop Required"
+        case .gasChange: return "Gas Mix Changed"
+        case .bookmark: return "Bookmark"
+        case .safetyStop(let mandatory): 
+            return mandatory ? "Mandatory Safety Stop" : "Safety Stop"
+        case .ceiling: return "Ceiling Violation"
+        case .po2: return "PPO2 Warning"
+        case .deepStop: return "Deep Stop"
+        }
+    }
+    
+    public var icon: String {
+        switch self {
+        case .ascent: return "exclamationmark.triangle"
+        case .violation: return "exclamationmark.circle"
+        case .decoStop: return "arrow.down.circle"
+        case .gasChange: return "bubble.right"
+        case .bookmark: return "bookmark"
+        case .safetyStop: return "checkmark.circle"
+        case .ceiling: return "arrow.up.circle"
+        case .po2: return "aqi.high"
+        case .deepStop: return "arrow.down.circle.fill"
+        }
+    }
+}
 
 public struct DiveProfilePoint {
     public let time: TimeInterval
@@ -8,6 +64,7 @@ public struct DiveProfilePoint {
     public let po2: Double?  // Oxygen partial pressure
     public let pn2: Double?  // Nitrogen partial pressure
     public let phe: Double?  // Helium partial pressure
+    public let events: [DiveEvent]
     
     public init(
         time: TimeInterval,
@@ -16,7 +73,8 @@ public struct DiveProfilePoint {
         pressure: Double? = nil,
         po2: Double? = nil,
         pn2: Double? = nil,
-        phe: Double? = nil
+        phe: Double? = nil,
+        events: [DiveEvent] = []
     ) {
         self.time = time
         self.depth = depth
@@ -25,6 +83,7 @@ public struct DiveProfilePoint {
         self.po2 = po2
         self.pn2 = pn2
         self.phe = phe
+        self.events = events
     }
 }
 
@@ -68,29 +127,15 @@ public struct DecoModel {
         case none
         case buhlmann
         case vpm
-        case rgbm(variant: RGBMVariant)
+        case rgbm
         case dciem
-        
-        public enum RGBMVariant {
-            case suuntoFused
-            case suuntoFused2
-            case generic
-            
-            var description: String {
-                switch self {
-                case .suuntoFused: return "Suunto Fused RGBM"
-                case .suuntoFused2: return "Suunto Fused2 RGBM"
-                case .generic: return "RGBM"
-                }
-            }
-        }
         
         public var description: String {
             switch self {
             case .none: return "None"
             case .buhlmann: return "Bühlmann"
             case .vpm: return "VPM"
-            case .rgbm(let variant): return variant.description
+            case .rgbm: return "RGBM"
             case .dciem: return "DCIEM"
             }
         }
@@ -108,12 +153,6 @@ public struct DecoModel {
                 return "Bühlmann GF \(low)/\(high)"
             }
             return "Bühlmann"
-        case .rgbm(let variant):
-            if conservatism != 0 {
-                return "\(variant.description) (\(conservatism))"
-            } else {
-                return variant.description
-            }
         case .none:
             return "None"
         default:

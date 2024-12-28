@@ -51,3 +51,4 @@ Sources/LibDCSwift/ConnectedDeviceView.swift
 Sources/LibDCSwift/DiveLogSettingsView.swift
 Sources/LibDCSwift/AdvancedProfileDataType.swift
 Sources/LibDCSwift/DetailedDiveView.swift
+Sources/LibDCSwift/AdvancedDiveProfileChart.swift

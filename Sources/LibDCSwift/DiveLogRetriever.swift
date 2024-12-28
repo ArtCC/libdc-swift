@@ -62,9 +62,6 @@ public class DiveLogRetriever {
                     dataSize: Int(size)
                 )
                 
-                // Add logging to check decompression model
-                logInfo("📊 Parsed dive data with decompression model: \(String(describing: diveData.decoModel))")
-                
                 DispatchQueue.main.async {
                     context.viewModel.appendDives([diveData])  
                     logInfo("✅ Successfully parsed and added dive #\(currentDiveNumber)")
@@ -94,10 +91,11 @@ public class DiveLogRetriever {
         onProgress: ((Int, Int) -> Void)? = nil,
         completion: @escaping (Bool) -> Void
     ) {
-        logDebug("🚀 Starting dive retrieval process")
+        // Create a dedicated background queue for dive log retrieval
+        let retrievalQueue = DispatchQueue(label: "com.libdcswift.retrieval", qos: .userInitiated)
         
         #if os(iOS)
-        backgroundTask = UIApplication.shared.beginBackgroundTask { [self] in
+        backgroundTask = UIApplication.shared.beginBackgroundTask {
             endBackgroundTask()
             DispatchQueue.main.async {
                 viewModel.setDetailedError("Background task expired", status: DC_STATUS_TIMEOUT)
@@ -106,60 +104,40 @@ public class DiveLogRetriever {
         }
         #endif
         
-        viewModel.progress = .idle
-        
-        guard let device = devicePtr.pointee.device else {
-            viewModel.setDetailedError("No opened device found", status: DC_STATUS_IO)
-            completion(false)
-            return
-        }
-        
-        // Clear existing dives if fingerprinting is disabled
-        if viewModel.lastFingerprint == nil {
-            logInfo("📍 No fingerprint found - clearing existing dives before download")
-            viewModel.clear()
-        }
-        
-        // Get device-specific fingerprint
-        let deviceId = device.identifier.uuidString
-        if let storedFingerprint = viewModel.getFingerprint(forDevice: deviceId) {
-            logInfo("📍 Setting stored fingerprint: \(storedFingerprint.hexString)")
-            let status = dc_device_set_fingerprint(
-                device,
-                Array(storedFingerprint),
-                UInt32(storedFingerprint.count)
+        // Run the retrieval process in background
+        retrievalQueue.async {
+            guard let dcDevice = devicePtr.pointee.device else {
+                DispatchQueue.main.async {
+                    viewModel.setDetailedError("No device connection found", status: DC_STATUS_IO)
+                    completion(false)
+                }
+                return
+            }
+            
+            let context = CallbackContext(
+                viewModel: viewModel,
+                deviceName: device.name ?? "Unknown Device"
             )
             
-            if status != DC_STATUS_SUCCESS {
-                logWarning("⚠️ Failed to set fingerprint, will download all dives")
-                viewModel.clear() // Clear existing dives since fingerprint failed
-            } else {
-                logInfo("✅ Set fingerprint, will only download new dives")
-            }
-        } else {
-            logInfo("📍 No stored fingerprint found, will download all dives")
-        }
-        
-        let context = CallbackContext(
-            viewModel: viewModel,
-            deviceName: device.name ?? "Unknown Device"
-        )
-        
-        let contextPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(context).toOpaque())
-        
-        // Add a delay before starting enumeration to ensure stable connection
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) {
-            // Set QoS for this thread
-            if #available(iOS 10.0, *) {
-                Thread.current.qualityOfService = .userInitiated
+            let contextPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(context).toOpaque())
+            
+            // Set up progress reporting on main thread
+            let progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+                if devicePtr.pointee.have_progress != 0 {
+                    onProgress?(
+                        Int(devicePtr.pointee.progress.current),
+                        Int(devicePtr.pointee.progress.maximum)
+                    )
+                }
             }
             
+            // Start dive enumeration
             logInfo("🔄 Starting dive enumeration...")
-            let status = dc_device_foreach(device, diveCallbackClosure, contextPtr)
-            logInfo("📊 Dive enumeration completed with status: \(status)")
+            let status = dc_device_foreach(dcDevice, diveCallbackClosure, contextPtr)
             
-            // Release the context after we're done
+            // Clean up
             Unmanaged<CallbackContext>.fromOpaque(contextPtr).release()
+            progressTimer.invalidate()  // Stop the timer
             
             DispatchQueue.main.async {
                 if status == DC_STATUS_SUCCESS {
@@ -177,40 +155,15 @@ public class DiveLogRetriever {
                         completion(true)
                     }
                 } else {
-                    let errorMsg = "Error enumerating dives"
-                    logError("❌ \(errorMsg): \(status)")
-                    viewModel.setDetailedError(errorMsg, status: status)
+                    viewModel.setDetailedError("Error enumerating dives", status: status)
                     completion(false)
                 }
-                
-                logDebug("🔄 Final state - isRetrievingLogs should be set to false")
                 
                 #if os(iOS)
                 endBackgroundTask()
                 #endif
             }
         }
-        
-        // Create a strong reference to the timer
-        let progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
-            if devicePtr.pointee.have_progress != 0 {
-                onProgress?(
-                    Int(devicePtr.pointee.progress.current),
-                    Int(devicePtr.pointee.progress.maximum)
-                )
-            }
-            
-            switch viewModel.progress {
-            case .completed, .error, .cancelled:
-                timer.invalidate()
-                logInfo("Progress timer invalidated - \(viewModel.progress)")
-            default:
-                break
-            }
-        }
-        
-        // Keep the timer referenced
-        RunLoop.current.add(progressTimer, forMode: .common)
     }
     
     #if os(iOS)

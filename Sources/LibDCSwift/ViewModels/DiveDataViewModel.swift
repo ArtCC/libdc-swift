@@ -6,31 +6,39 @@ public class DiveDataViewModel: ObservableObject {
     @Published public var status: String = ""
     @Published public var progress: DownloadProgress = .idle
     @Published public var lastFingerprint: Data?
-    private let fingerprintKey = "lastDiveFingerprint"
+    private let fingerprintKeyPrefix = "lastDiveFingerprint_"
     
-    public init() {
-        loadFingerprint()
-    }
+    public init() {}
     
-    private func loadFingerprint() {
-        if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKey) {
-            DispatchQueue.main.async {
-                self.lastFingerprint = savedFingerprint
-            }
+    public func getFingerprint(forDevice deviceId: String) -> Data? {
+        if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKeyPrefix + deviceId) {
+            self.lastFingerprint = savedFingerprint
+            return savedFingerprint
         }
+        return nil
     }
     
-    public func saveFingerprint(_ fingerprint: Data) {
+    public func saveFingerprint(_ fingerprint: Data, forDevice device: CBPeripheral) {
         DispatchQueue.main.async {
             self.lastFingerprint = fingerprint
-            UserDefaults.standard.set(fingerprint, forKey: self.fingerprintKey)
+            UserDefaults.standard.set(fingerprint, forKey: self.fingerprintKeyPrefix + device.identifier.uuidString)
         }
     }
     
-    public func clearFingerprint() {
+    public func clearFingerprint(forDevice deviceId: String? = nil) {
         DispatchQueue.main.async {
             self.lastFingerprint = nil
-            UserDefaults.standard.removeObject(forKey: self.fingerprintKey)
+            if let deviceId = deviceId {
+                UserDefaults.standard.removeObject(forKey: self.fingerprintKeyPrefix + deviceId)
+            } else {
+                // Clear all fingerprints if no device specified
+                let defaults = UserDefaults.standard
+                defaults.dictionaryRepresentation().keys.forEach { key in
+                    if key.hasPrefix(self.fingerprintKeyPrefix) {
+                        defaults.removeObject(forKey: key)
+                    }
+                }
+            }
             self.objectWillChange.send()
         }
     }

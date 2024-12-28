@@ -3,6 +3,7 @@ import CoreBluetooth
 import Clibdivecomputer
 import LibDCBridge
 import Combine
+import UIKit
 
 @objc(SerialService)
 class SerialService: NSObject {
@@ -461,6 +462,48 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             self?.currentRetrievalDevice = nil
         }
     }
+
+    public func setBackgroundMode(_ enabled: Bool) {
+        if enabled {
+            // Set connection parameters for background operation
+            if let peripheral = peripheral {
+                // For iOS/macOS, we can only ensure the connection stays alive
+                // by maintaining the peripheral reference and keeping the central manager active
+                logInfo("Setting up background mode for peripheral: \(peripheral.identifier)")
+                
+                #if os(iOS)
+                // On iOS, we can request background execution time
+                var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+                backgroundTask = UIApplication.shared.beginBackgroundTask { [backgroundTask] in
+                    // Cleanup callback
+                    if backgroundTask != .invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTask)
+                    }
+                }
+                
+                // Store the task identifier for later cleanup
+                currentBackgroundTask = backgroundTask
+                #endif
+            }
+        } else {
+            logInfo("Disabling background mode")
+            #if os(iOS)
+            // Clean up any background tasks when disabling background mode
+            if let peripheral = peripheral {
+                logInfo("Cleaning up background mode for peripheral: \(peripheral.identifier)")
+                if let task = currentBackgroundTask, task != .invalid {
+                    UIApplication.shared.endBackgroundTask(task)
+                    currentBackgroundTask = nil
+                }
+            }
+            #endif
+        }
+    }
+
+    // track background tasks
+    #if os(iOS)
+    private var currentBackgroundTask: UIBackgroundTaskIdentifier?
+    #endif
 }
 
 extension Data {

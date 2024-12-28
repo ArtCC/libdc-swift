@@ -82,38 +82,6 @@ public enum ParserError: Error {
     case sampleProcessingFailed(dc_status_t)
 }
 
-public struct DiveEvent {
-    public let type: parser_sample_event_t
-    public let time: TimeInterval
-    public let value: UInt32
-    public let flags: UInt32
-    
-    public var description: String {
-        switch type {
-        case SAMPLE_EVENT_GASCHANGE:
-            return "Gas mix changed to \(value)"
-        case SAMPLE_EVENT_VIOLATION:
-            return "Violation occurred"
-        case SAMPLE_EVENT_BOOKMARK:
-            return "User bookmark"
-        case SAMPLE_EVENT_ASCENT:
-            return "Ascent rate warning"
-        case SAMPLE_EVENT_DECOSTOP:
-            return "Deco stop required"
-        case SAMPLE_EVENT_CEILING:
-            return "Ceiling violation"
-        case SAMPLE_EVENT_SAFETYSTOP:
-            return "Safety stop"
-        case SAMPLE_EVENT_DEEPSTOP:
-            return "Deep stop"
-        case SAMPLE_EVENT_PO2:
-            return "PPO2 warning"
-        default:
-            return "Event type: \(type.rawValue)"
-        }
-    }
-}
-
 public class GenericParser {    
     private static func getField<T>(_ parser: OpaquePointer?, type: dc_field_type_t, flags: UInt32 = 0) -> T? {
         let value = UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<T>.size, alignment: MemoryLayout<T>.alignment)
@@ -234,11 +202,42 @@ public class GenericParser {
                 wrapper.data.temperature = value.temperature
                 
             case DC_SAMPLE_EVENT:
-                wrapper.data.event = SampleData.Event(
-                    type: parser_sample_event_t(value.event.type),
-                    value: value.event.value,
-                    flags: value.event.flags
+                let eventType = value.event.type
+                var events: [DiveEvent] = []
+                
+                switch eventType {
+                case SAMPLE_EVENT_ASCENT.rawValue:
+                    events.append(.ascent)
+                case SAMPLE_EVENT_VIOLATION.rawValue:
+                    events.append(.violation)
+                case SAMPLE_EVENT_DECOSTOP.rawValue:
+                    events.append(.decoStop)
+                case SAMPLE_EVENT_GASCHANGE.rawValue:
+                    events.append(.gasChange)
+                case SAMPLE_EVENT_BOOKMARK.rawValue:
+                    events.append(.bookmark)
+                case SAMPLE_EVENT_SAFETYSTOP.rawValue:
+                    events.append(.safetyStop(mandatory: false))
+                case SAMPLE_EVENT_SAFETYSTOP_MANDATORY.rawValue:
+                    events.append(.safetyStop(mandatory: true))
+                case SAMPLE_EVENT_CEILING.rawValue:
+                    events.append(.ceiling)
+                case SAMPLE_EVENT_DEEPSTOP.rawValue:
+                    events.append(.deepStop)
+                default:
+                    break
+                }
+                
+                // Add the events to the current point
+                let point = DiveProfilePoint(
+                    time: wrapper.data.time,
+                    depth: wrapper.data.depth,
+                    temperature: wrapper.data.temperature,
+                    pressure: wrapper.data.pressure.last?.value,
+                    po2: wrapper.data.ppo2.last?.value,
+                    events: events
                 )
+                wrapper.data.profile.append(point)
                 
             case DC_SAMPLE_RBT:
                 wrapper.data.rbt = value.rbt
@@ -281,7 +280,6 @@ public class GenericParser {
         
         // Release the wrapper after we're done
         Unmanaged<SampleDataWrapper>.fromOpaque(wrapperPtr).release()
-        
         guard samplesStatus == DC_STATUS_SUCCESS else {
             throw ParserError.sampleProcessingFailed(samplesStatus)
         }
@@ -297,17 +295,8 @@ public class GenericParser {
         
         // Get deco model
         var decoValue = dc_decomodel_t()
-        let decoStatus = dc_parser_get_field(parser, DC_FIELD_DECOMODEL, 0, &decoValue)
-        logInfo("🔍 Decompression model field status: \(decoStatus)")
-
+        _ = dc_parser_get_field(parser, DC_FIELD_DECOMODEL, 0, &decoValue)
         if let decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
-            logInfo("📊 Decompression model details:")
-            logInfo("  - Type: \(decoModel.type.rawValue)")
-            logInfo("  - Conservatism: \(decoModel.conservatism)")
-            if decoModel.type == DC_DECOMODEL_BUHLMANN {
-                logInfo("  - GF Low: \(decoModel.params.gf.low)")
-                logInfo("  - GF High: \(decoModel.params.gf.high)")
-            }
             wrapper.setDecoModel(decoModel)
         } else {
             logInfo("❌ Failed to get decompression model field")
@@ -404,7 +393,7 @@ public class GenericParser {
         }
     }
     
-    private static func convertDecoModel(_ model: dc_decomodel_t, family: DeviceFamily) -> DiveData.DecoModel {
+    private static func convertDecoModel(_ model: dc_decomodel_t) -> DiveData.DecoModel {
         let type: DiveData.DecoModel.DecoType
         
         switch model.type {
@@ -413,19 +402,7 @@ public class GenericParser {
         case DC_DECOMODEL_VPM:
             type = .vpm
         case DC_DECOMODEL_RGBM:
-            // Determine RGBM variant based on device family
-            let rgbmVariant: DiveData.DecoModel.DecoType.RGBMVariant = switch family {
-            case .suuntoEonSteel:
-                // For Suunto EON Steel/D5, we know it's Fused2 RGBM
-                .suuntoFused2
-            case .suuntoD9:
-                // For older Suunto models, it's Fused RGBM
-                .suuntoFused
-            default:
-                // For other devices, use generic RGBM
-                .generic
-            }
-            type = .rgbm(variant: rgbmVariant)
+            type = .rgbm
         case DC_DECOMODEL_DCIEM:
             type = .dciem
         default:
