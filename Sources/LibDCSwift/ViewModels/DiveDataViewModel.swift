@@ -5,42 +5,38 @@ public class DiveDataViewModel: ObservableObject {
     @Published public var dives: [DiveData] = []
     @Published public var status: String = ""
     @Published public var progress: DownloadProgress = .idle
-    @Published public var lastFingerprint: Data?
     private let fingerprintKeyPrefix = "lastDiveFingerprint_"
+    private var fingerprints: [String: Data] = [:]
     
     public init() {}
     
-    public func getFingerprint(forDevice deviceId: String) -> Data? {
-        if let savedFingerprint = UserDefaults.standard.data(forKey: fingerprintKeyPrefix + deviceId) {
-            self.lastFingerprint = savedFingerprint
-            return savedFingerprint
+    public func getFingerprint(forDevice uuid: String) -> Data? {
+        // First check our cached fingerprints
+        if let fingerprint = fingerprints[uuid] {
+            return fingerprint
+        }
+        
+        // If not in cache, check UserDefaults
+        let key = "fingerprint_\(uuid)"
+        if let data = UserDefaults.standard.data(forKey: key) {
+            fingerprints[uuid] = data // Cache it for future use
+            return data
         }
         return nil
     }
     
     public func saveFingerprint(_ fingerprint: Data, forDevice device: CBPeripheral) {
-        DispatchQueue.main.async {
-            self.lastFingerprint = fingerprint
-            UserDefaults.standard.set(fingerprint, forKey: self.fingerprintKeyPrefix + device.identifier.uuidString)
-        }
+        let key = "fingerprint_\(device.identifier.uuidString)"
+        UserDefaults.standard.set(fingerprint, forKey: key)
+        fingerprints[device.identifier.uuidString] = fingerprint // Update cache
+        objectWillChange.send() // Notify UI if needed
     }
     
-    public func clearFingerprint(forDevice deviceId: String? = nil) {
-        DispatchQueue.main.async {
-            self.lastFingerprint = nil
-            if let deviceId = deviceId {
-                UserDefaults.standard.removeObject(forKey: self.fingerprintKeyPrefix + deviceId)
-            } else {
-                // Clear all fingerprints if no device specified
-                let defaults = UserDefaults.standard
-                defaults.dictionaryRepresentation().keys.forEach { key in
-                    if key.hasPrefix(self.fingerprintKeyPrefix) {
-                        defaults.removeObject(forKey: key)
-                    }
-                }
-            }
-            self.objectWillChange.send()
-        }
+    public func clearFingerprint(forDevice uuid: String) {
+        let key = "fingerprint_\(uuid)"
+        UserDefaults.standard.removeObject(forKey: key)
+        fingerprints.removeValue(forKey: uuid) // Clear from cache
+        objectWillChange.send() // Notify UI if needed
     }
     
     public enum DownloadProgress: CustomStringConvertible {
@@ -168,5 +164,18 @@ public class DiveDataViewModel: ObservableObject {
                 self.progress = .inProgress(current: self.dives.count)
             }
         }
+    }
+    
+    public func clearAllFingerprints() {
+        // Clear all fingerprints from UserDefaults
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys {
+            if key.hasPrefix("fingerprint_") {
+                defaults.removeObject(forKey: key)
+            }
+        }
+        // Clear the cache
+        fingerprints.removeAll()
+        objectWillChange.send()
     }
 } 

@@ -336,7 +336,7 @@ public class GenericParser {
             datetime: date,
             maxDepth: wrapper.data.maxDepth,
             divetime: wrapper.data.maxTime,
-            temperature: wrapper.data.lastTemperature,
+            temperature: wrapper.data.tempMinimum,
             profile: wrapper.data.profile,
             tankPressure: wrapper.data.pressure.map { $0.value },
             gasMix: wrapper.data.gasmix,
