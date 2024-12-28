@@ -301,6 +301,21 @@ public class GenericParser {
             wrapper.setDecoModel(decoModel)
         }
         
+        // Get dive mode
+        let diveMode: DiveData.DiveMode
+        if let modeValue: UInt32 = getField(parser, type: DC_FIELD_DIVEMODE) {
+            diveMode = switch modeValue {
+            case DC_DIVEMODE_FREEDIVE.rawValue: .freedive
+            case DC_DIVEMODE_GAUGE.rawValue: .gauge
+            case DC_DIVEMODE_OC.rawValue: .openCircuit
+            case DC_DIVEMODE_CCR.rawValue: .closedCircuit
+            case DC_DIVEMODE_SCR.rawValue: .semiClosedCircuit
+            default: .openCircuit
+            }
+        } else {
+            diveMode = .openCircuit  // Default to OC if not specified
+        }
+        
         // Create date from components
         var dateComponents = DateComponents()
         dateComponents.year = Int(datetime.year)
@@ -332,7 +347,7 @@ public class GenericParser {
             maxTemperature: wrapper.data.tempMaximum,
             tankCount: wrapper.data.tanks.count,
             tanks: wrapper.data.tanks,
-            diveMode: wrapper.data.diveMode,
+            diveMode: diveMode,
             decoModel: wrapper.data.decoModel,
             location: wrapper.data.location,
             rbt: wrapper.data.rbt,
@@ -378,6 +393,7 @@ public class GenericParser {
     }
     
     private static func convertDecoModel(_ model: dc_decomodel_t) -> DiveData.DecoModel {
+        // Parse the deco model type
         let type: DiveData.DecoModel.DecoType
         switch model.type {
         case DC_DECOMODEL_BUHLMANN:
@@ -392,11 +408,18 @@ public class GenericParser {
             type = .none
         }
         
+        // Get conservatism level
+        let conservatism = Int(model.conservatism)
+        
+        // Get gradient factors for Bühlmann
+        let gfLow = type == .buhlmann ? UInt(model.params.gf.low) : 0
+        let gfHigh = type == .buhlmann ? UInt(model.params.gf.high) : 0
+        
         return DiveData.DecoModel(
             type: type,
-            conservatism: Int(model.conservatism),
-            gfLow: model.params.gf.low,
-            gfHigh: model.params.gf.high
+            conservatism: conservatism,
+            gfLow: UInt32(gfLow),
+            gfHigh: UInt32(gfHigh)
         )
     }
 } 

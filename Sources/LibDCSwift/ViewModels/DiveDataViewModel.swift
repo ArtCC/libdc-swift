@@ -6,7 +6,6 @@ public class DiveDataViewModel: ObservableObject {
     @Published public var status: String = ""
     @Published public var progress: DownloadProgress = .idle
     @Published public var lastFingerprint: Data?
-    @Published public var isRetrievingLogs: Bool = false
     private let fingerprintKey = "lastDiveFingerprint"
     
     public init() {
@@ -36,25 +35,25 @@ public class DiveDataViewModel: ObservableObject {
         }
     }
     
-    public enum DownloadProgress: Equatable {
+    public enum DownloadProgress: CustomStringConvertible {
         case idle
         case inProgress(current: Int)
         case completed
-        case error(String)
         case cancelled
+        case error(String)
         
         public var description: String {
             switch self {
             case .idle:
                 return "Ready"
-            case .inProgress(let current):
-                return "Downloading dive \(current)"
+            case .inProgress:
+                return ""
             case .completed:
                 return "Completed"
-            case .error(let message):
-                return "Error: \(message)"
             case .cancelled:
                 return "Cancelled"
+            case .error(let message):
+                return "Error: \(message)"
             }
         }
     }
@@ -124,32 +123,32 @@ public class DiveDataViewModel: ObservableObject {
     public func clear() {
         DispatchQueue.main.async {
             self.dives.removeAll()
-            self.status = ""
+            if case .idle = self.progress {
+                self.status = ""
+            }
             self.progress = .idle
-            self.isRetrievingLogs = false
         }
     }
     
-    public func setDetailedError(_ message: String, status: dc_status_t? = nil) {
-        let errorMessage = if let status = status {
-            "\(message) (Status: \(status))"
-        } else {
-            message
-        }
+    public func setDetailedError(_ message: String, status: dc_status_t) {
         DispatchQueue.main.async {
-            self.progress = .error(errorMessage)
-        }
-    }
-    
-    public func startRetrieval() {
-        DispatchQueue.main.async {
-            self.isRetrievingLogs = true
-        }
-    }
-    
-    public func endRetrieval() {
-        DispatchQueue.main.async {
-            self.isRetrievingLogs = false
+            let statusDescription = switch status {
+            case DC_STATUS_SUCCESS: "Success"
+            case DC_STATUS_DONE: "Done"
+            case DC_STATUS_UNSUPPORTED: "Unsupported Operation"
+            case DC_STATUS_INVALIDARGS: "Invalid Arguments"
+            case DC_STATUS_NOMEMORY: "Out of Memory"
+            case DC_STATUS_NODEVICE: "No Device"
+            case DC_STATUS_NOACCESS: "No Access"
+            case DC_STATUS_IO: "Communication Error"
+            case DC_STATUS_TIMEOUT: "Timeout"
+            case DC_STATUS_PROTOCOL: "Protocol Error"
+            case DC_STATUS_DATAFORMAT: "Data Format Error"
+            case DC_STATUS_CANCELLED: "Cancelled"
+            default: "Unknown Error (\(status))"
+            }
+            
+            self.progress = .error("\(message): \(statusDescription)")
         }
     }
 } 

@@ -204,10 +204,6 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
         return DC_STATUS_INVALIDARGS;
     }
 
-    printf("Opening device with descriptor - type: %d, model: %d\n",
-           dc_descriptor_get_type(descriptor),
-           dc_descriptor_get_model(descriptor));
-
     // Initialize all pointers to NULL
     memset(data, 0, sizeof(device_data_t));
     

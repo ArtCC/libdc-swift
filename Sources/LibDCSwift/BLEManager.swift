@@ -90,6 +90,18 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     
     private var preferredService: CBService?
     
+    @Published public var isRetrievingLogs = false {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    
+    @Published public var currentRetrievalDevice: CBPeripheral? {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -440,6 +452,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             name: storedDevice.name,
             deviceAddress: storedDevice.uuid
         )
+    }
+
+    public func clearRetrievalState() {
+        logDebug("🧹 Clearing retrieval state")
+        DispatchQueue.main.async { [weak self] in
+            self?.isRetrievingLogs = false
+            self?.currentRetrievalDevice = nil
+        }
     }
 }
 

@@ -5,7 +5,7 @@ import UIKit
 
 public class DiveLogRetriever {
     private class CallbackContext {
-        var logCount: Int = 0
+        var logCount: Int = 1
         var totalLogs: Int = 0
         let viewModel: DiveDataViewModel
         var lastFingerprint: Data?
@@ -39,16 +39,14 @@ public class DiveLogRetriever {
         let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
         context.lastFingerprint = fingerprintData
         logInfo("📍 New dive fingerprint: \(fingerprintData.hexString)")
-        
-        // Increment counter before using it
-        context.logCount += 1
+
+        // Get the currentDiveNumber
         let currentDiveNumber = context.logCount
         logInfo("📊 Processing dive #\(currentDiveNumber)")
         
         // Update progress with the current dive number
         DispatchQueue.main.async {
             context.viewModel.updateProgress(current: currentDiveNumber)
-            context.viewModel.status = "Downloading dive \(currentDiveNumber)"
         }
         
         // Get device family and model
@@ -76,6 +74,8 @@ public class DiveLogRetriever {
             return 0
         }
         
+        // Increment counter after using it
+        context.logCount += 1
         return 1 // Return 1 on successful processing
     }
     
@@ -90,13 +90,13 @@ public class DiveLogRetriever {
         onProgress: ((Int, Int) -> Void)? = nil,
         completion: @escaping (Bool) -> Void
     ) {
+        logDebug("🚀 Starting dive retrieval process")
+        
         #if os(iOS)
-        // Start background task
         backgroundTask = UIApplication.shared.beginBackgroundTask { [self] in
-            // If background task expires, clean up and mark as failed
             endBackgroundTask()
             DispatchQueue.main.async {
-                viewModel.setError("Background task expired")
+                viewModel.setDetailedError("Background task expired", status: DC_STATUS_TIMEOUT)
                 completion(false)
             }
         }
@@ -106,7 +106,7 @@ public class DiveLogRetriever {
         viewModel.progress = .idle
         
         guard let device = devicePtr.pointee.device else {
-            viewModel.setError("No opened device found.")
+            viewModel.setDetailedError("No opened device found", status: DC_STATUS_IO)
             completion(false)
             return
         }
@@ -136,14 +136,14 @@ public class DiveLogRetriever {
         
         let contextPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(context).toOpaque())
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            logInfo("🔄 Starting dive enumeration...")
-            
+        // Add a delay before starting enumeration to ensure stable connection
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) {
             // Set QoS for this thread
             if #available(iOS 10.0, *) {
                 Thread.current.qualityOfService = .userInitiated
             }
             
+            logInfo("🔄 Starting dive enumeration...")
             let status = dc_device_foreach(device, diveCallbackClosure, contextPtr)
             logInfo("📊 Dive enumeration completed with status: \(status)")
             
@@ -158,18 +158,21 @@ public class DiveLogRetriever {
                             logInfo("💾 Saved new fingerprint: \(lastFingerprint.hexString)")
                         }
                         viewModel.progress = .completed
+                        logDebug("✅ Dive retrieval completed successfully")
                         completion(true)
                     } else {
-                        logWarning("⚠️ Dive enumeration successful but no dives found")
+                        logWarning("⚠ Dive enumeration successful but no dives found")
                         viewModel.progress = .completed
                         completion(true)
                     }
                 } else {
-                    let errorMsg = "Error enumerating dives: \(status)"
-                    logError("❌ \(errorMsg)")
-                    viewModel.setError(errorMsg)
+                    let errorMsg = "Error enumerating dives"
+                    logError("❌ \(errorMsg): \(status)")
+                    viewModel.setDetailedError(errorMsg, status: status)
                     completion(false)
                 }
+                
+                logDebug("🔄 Final state - isRetrievingLogs should be set to false")
                 
                 #if os(iOS)
                 endBackgroundTask()

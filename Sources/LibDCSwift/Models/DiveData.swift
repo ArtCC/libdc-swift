@@ -64,16 +64,42 @@ public struct TankInfo {
 }
 
 public struct DecoModel {
-    public let type: dc_decomodel_type_t
+    public enum DecoType {
+        case none
+        case buhlmann
+        case vpm
+        case rgbm
+        case dciem
+        
+        public var description: String {
+            switch self {
+            case .none: return "None"
+            case .buhlmann: return "Bühlmann"
+            case .vpm: return "VPM"
+            case .rgbm: return "RGBM"
+            case .dciem: return "DCIEM"
+            }
+        }
+    }
+    
+    public let type: DecoType
     public let conservatism: Int
     public let gfLow: UInt
     public let gfHigh: UInt
     
-    public init(type: dc_decomodel_type_t, conservatism: Int, gfLow: UInt, gfHigh: UInt) {
-        self.type = type
-        self.conservatism = conservatism
-        self.gfLow = gfLow
-        self.gfHigh = gfHigh
+    public var description: String {
+        switch type {
+        case .buhlmann:
+            return "Bühlmann \(gfLow)/\(gfHigh)"
+        case .none:
+            return "None"
+        default:
+            if conservatism != 0 {
+                return "\(type.description) (\(conservatism))"
+            } else {
+                return type.description
+            }
+        }
     }
 }
 
@@ -193,6 +219,16 @@ public struct DiveData: Identifiable {
         case openCircuit
         case closedCircuit
         case semiClosedCircuit
+        
+        public var description: String {
+            switch self {
+            case .freedive: return "Freedive"
+            case .gauge: return "Gauge"
+            case .openCircuit: return "Open Circuit"
+            case .closedCircuit: return "Closed Circuit"
+            case .semiClosedCircuit: return "Semi-Closed Circuit"
+            }
+        }
     }
     
     public struct DecoModel {
@@ -207,6 +243,16 @@ public struct DiveData: Identifiable {
             case vpm
             case rgbm
             case dciem
+            
+            public var description: String {
+                switch self {
+                case .none: return "None"
+                case .buhlmann: return "Bühlmann"
+                case .vpm: return "VPM"
+                case .rgbm: return "RGBM"
+                case .dciem: return "DCIEM"
+                }
+            }
         }
         
         public init(type: DecoType, conservatism: Int, gfLow: UInt32? = nil, gfHigh: UInt32? = nil) {
@@ -214,6 +260,24 @@ public struct DiveData: Identifiable {
             self.conservatism = conservatism
             self.gfLow = gfLow
             self.gfHigh = gfHigh
+        }
+        
+        public var description: String {
+            switch type {
+            case .buhlmann:
+                if let low = gfLow, let high = gfHigh {
+                    return "Bühlmann GF \(low)/\(high)"
+                }
+                return "Bühlmann"
+            case .none:
+                return "None"
+            default:
+                if conservatism != 0 {
+                    return "\(type.description) (\(conservatism))"
+                } else {
+                    return type.description
+                }
+            }
         }
     }
     
