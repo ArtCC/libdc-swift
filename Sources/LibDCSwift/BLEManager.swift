@@ -96,12 +96,12 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             objectWillChange.send()
         }
     }
-    
     @Published public var currentRetrievalDevice: CBPeripheral? {
         didSet {
             objectWillChange.send()
         }
     }
+    @Published public var isDisconnecting = false
     
     private override init() {
         super.init()
@@ -171,28 +171,54 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return true
     }
     
-    @objc public func close() {
+    @objc public func close(clearDevicePtr: Bool = false) {
+        // Set disconnecting state
+        isDisconnecting = true
+        
+        // First clear all state on main thread to ensure UI updates properly
+        DispatchQueue.main.async {
+            self.isPeripheralReady = false
+            self.connectedDevice = nil
+        }
+        
+        // Clear the receive buffer
         queue.sync {
-            logInfo("Clearing \(receivedData.count) bytes from receive buffer")
-            receivedData.removeAll()
-        }
-        
-        if let devicePtr = self.openedDeviceDataPtr {
-            logDebug("Closing device data pointer")
-            if devicePtr.pointee.device != nil {
-                logDebug("Closing device")
-                dc_device_close(devicePtr.pointee.device)
+            if !receivedData.isEmpty {
+                logInfo("Clearing \(receivedData.count) bytes from receive buffer")
+                receivedData.removeAll()
             }
-            logDebug("Deallocating device data pointer")
-            devicePtr.deallocate()
-            self.openedDeviceDataPtr = nil
-        } else {
-            logDebug("No device data pointer to close")
         }
         
-        if let connectedDevice = self.connectedDevice {
+        // Handle device pointer cleanup if requested
+        if clearDevicePtr {
+            if let devicePtr = self.openedDeviceDataPtr {
+                logDebug("Closing device data pointer")
+                if devicePtr.pointee.device != nil {
+                    logDebug("Closing device")
+                    dc_device_close(devicePtr.pointee.device)
+                }
+                logDebug("Deallocating device data pointer")
+                devicePtr.deallocate()
+                self.openedDeviceDataPtr = nil
+            }
+        }
+        
+        // Store local reference to peripheral before clearing state
+        if let peripheral = self.peripheral {
             logDebug("Disconnecting peripheral")
-            centralManager.cancelPeripheralConnection(connectedDevice)
+            
+            // Clear all connection-related state
+            self.writeCharacteristic = nil
+            self.notifyCharacteristic = nil
+            self.peripheral = nil
+            
+            // Finally cancel the connection
+            centralManager.cancelPeripheralConnection(peripheral)
+        }
+        
+        // Reset disconnecting state after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.isDisconnecting = false
         }
     }
     
@@ -246,16 +272,22 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         if let error = error {
             logError("Disconnect error: \(error.localizedDescription)")
         }
-        isPeripheralReady = false
-        self.connectedDevice = nil
-
-        // Attempt to reconnect if this was a stored device
-        if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) {
-            logInfo("Attempting to reconnect to stored device")
-            _ = DeviceConfiguration.openBLEDevice(
-                name: storedDevice.name,
-                deviceAddress: storedDevice.uuid
-            )
+        
+        DispatchQueue.main.async {
+            self.isPeripheralReady = false
+            self.connectedDevice = nil
+            
+            // Don't attempt to reconnect if we initiated the disconnect
+            if !self.isDisconnecting {
+                // Attempt to reconnect if this was a stored device
+                if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) {
+                    logInfo("Attempting to reconnect to stored device")
+                    _ = DeviceConfiguration.openBLEDevice(
+                        name: storedDevice.name,
+                        deviceAddress: storedDevice.uuid
+                    )
+                }
+            }
         }
     }
     
@@ -504,6 +536,23 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     #if os(iOS)
     private var currentBackgroundTask: UIBackgroundTaskIdentifier?
     #endif
+
+    // Method to handle system-level disconnects
+    public func systemDisconnect(_ peripheral: CBPeripheral) {
+        logInfo("Performing system-level disconnect for \(peripheral.name ?? "Unknown Device")")
+        
+        // Clear state first
+        DispatchQueue.main.async {
+            self.isPeripheralReady = false
+            self.connectedDevice = nil
+            self.writeCharacteristic = nil
+            self.notifyCharacteristic = nil
+            self.peripheral = nil
+        }
+        
+        // Then cancel the connection
+        centralManager.cancelPeripheralConnection(peripheral)
+    }
 }
 
 extension Data {

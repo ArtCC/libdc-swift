@@ -1,6 +1,10 @@
 import Foundation
 import CoreBluetooth
 
+extension Notification.Name {
+    public static let deviceForgotten = Notification.Name("com.libdc.deviceForgotten")
+}
+
 public class StoredDevice: Codable {
    public let uuid: String
    public let name: String
@@ -16,7 +20,6 @@ public class StoredDevice: Codable {
        self.lastConnected = Date()
    }
    
-   // Manual Codable implementation
    private enum CodingKeys: String, CodingKey {
        case uuid
        case name
@@ -87,6 +90,11 @@ public class StoredDevice: Codable {
    public func removeDevice(uuid: String) {
        storedDevices.removeAll { $0.uuid == uuid }
        saveDevices()
+       NotificationCenter.default.post(
+           name: .deviceForgotten,
+           object: nil,
+           userInfo: ["deviceUUID": uuid]
+       )
    }
    
    public func getLastConnectedDevice() -> StoredDevice? {
