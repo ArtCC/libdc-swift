@@ -296,9 +296,21 @@ public class GenericParser {
         }
         
         // Get deco model
+        var decoValue = dc_decomodel_t()
+        let decoStatus = dc_parser_get_field(parser, DC_FIELD_DECOMODEL, 0, &decoValue)
+        logInfo("🔍 Decompression model field status: \(decoStatus)")
+
         if let decoModel: dc_decomodel_t = getField(parser, type: DC_FIELD_DECOMODEL) {
-            logInfo("The decoModel parsed is \(decoModel)")
+            logInfo("📊 Decompression model details:")
+            logInfo("  - Type: \(decoModel.type.rawValue)")
+            logInfo("  - Conservatism: \(decoModel.conservatism)")
+            if decoModel.type == DC_DECOMODEL_BUHLMANN {
+                logInfo("  - GF Low: \(decoModel.params.gf.low)")
+                logInfo("  - GF High: \(decoModel.params.gf.high)")
+            }
             wrapper.setDecoModel(decoModel)
+        } else {
+            logInfo("❌ Failed to get decompression model field")
         }
         
         // Get dive mode
@@ -392,16 +404,28 @@ public class GenericParser {
         }
     }
     
-    private static func convertDecoModel(_ model: dc_decomodel_t) -> DiveData.DecoModel {
-        // Parse the deco model type
+    private static func convertDecoModel(_ model: dc_decomodel_t, family: DeviceFamily) -> DiveData.DecoModel {
         let type: DiveData.DecoModel.DecoType
+        
         switch model.type {
         case DC_DECOMODEL_BUHLMANN:
             type = .buhlmann
         case DC_DECOMODEL_VPM:
             type = .vpm
         case DC_DECOMODEL_RGBM:
-            type = .rgbm
+            // Determine RGBM variant based on device family
+            let rgbmVariant: DiveData.DecoModel.DecoType.RGBMVariant = switch family {
+            case .suuntoEonSteel:
+                // For Suunto EON Steel/D5, we know it's Fused2 RGBM
+                .suuntoFused2
+            case .suuntoD9:
+                // For older Suunto models, it's Fused RGBM
+                .suuntoFused
+            default:
+                // For other devices, use generic RGBM
+                .generic
+            }
+            type = .rgbm(variant: rgbmVariant)
         case DC_DECOMODEL_DCIEM:
             type = .dciem
         default:

@@ -11,6 +11,7 @@ public class DiveLogRetriever {
         var lastFingerprint: Data?
         let deviceName: String
         var isCancelled: Bool = false  
+        var newDives: [DiveData] = []
         
         init(viewModel: DiveDataViewModel, deviceName: String) {
             self.viewModel = viewModel
@@ -61,9 +62,12 @@ public class DiveLogRetriever {
                     dataSize: Int(size)
                 )
                 
+                // Add logging to check decompression model
+                logInfo("📊 Parsed dive data with decompression model: \(String(describing: diveData.decoModel))")
+                
                 DispatchQueue.main.async {
-                    context.viewModel.dives.append(diveData)
-                    logInfo("✅ Successfully added dive #\(currentDiveNumber) to view model")
+                    context.viewModel.appendDives([diveData])  
+                    logInfo("✅ Successfully parsed and added dive #\(currentDiveNumber)")
                 }
             } catch {
                 logError("❌ Failed to parse dive #\(currentDiveNumber): \(error)")
@@ -85,7 +89,7 @@ public class DiveLogRetriever {
     
     public static func retrieveDiveLogs(
         from devicePtr: UnsafeMutablePointer<device_data_t>,
-        deviceName: String,
+        device: CBPeripheral,
         viewModel: DiveDataViewModel,
         onProgress: ((Int, Int) -> Void)? = nil,
         completion: @escaping (Bool) -> Void
@@ -102,7 +106,6 @@ public class DiveLogRetriever {
         }
         #endif
         
-        viewModel.clear()
         viewModel.progress = .idle
         
         guard let device = devicePtr.pointee.device else {
@@ -111,8 +114,15 @@ public class DiveLogRetriever {
             return
         }
         
-        // Set the stored fingerprint if we have one
-        if let storedFingerprint = viewModel.lastFingerprint {
+        // Clear existing dives if fingerprinting is disabled
+        if viewModel.lastFingerprint == nil {
+            logInfo("📍 No fingerprint found - clearing existing dives before download")
+            viewModel.clear()
+        }
+        
+        // Get device-specific fingerprint
+        let deviceId = device.identifier.uuidString
+        if let storedFingerprint = viewModel.getFingerprint(forDevice: deviceId) {
             logInfo("📍 Setting stored fingerprint: \(storedFingerprint.hexString)")
             let status = dc_device_set_fingerprint(
                 device,
@@ -122,6 +132,7 @@ public class DiveLogRetriever {
             
             if status != DC_STATUS_SUCCESS {
                 logWarning("⚠️ Failed to set fingerprint, will download all dives")
+                viewModel.clear() // Clear existing dives since fingerprint failed
             } else {
                 logInfo("✅ Set fingerprint, will only download new dives")
             }
@@ -131,7 +142,7 @@ public class DiveLogRetriever {
         
         let context = CallbackContext(
             viewModel: viewModel,
-            deviceName: deviceName
+            deviceName: device.name ?? "Unknown Device"
         )
         
         let contextPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(context).toOpaque())
@@ -152,16 +163,16 @@ public class DiveLogRetriever {
             
             DispatchQueue.main.async {
                 if status == DC_STATUS_SUCCESS {
-                    if context.logCount > 0 {
+                    if !context.newDives.isEmpty {
                         if let lastFingerprint = context.lastFingerprint {
-                            viewModel.saveFingerprint(lastFingerprint)
+                            viewModel.saveFingerprint(lastFingerprint, forDevice: device)
                             logInfo("💾 Saved new fingerprint: \(lastFingerprint.hexString)")
                         }
                         viewModel.progress = .completed
                         logDebug("✅ Dive retrieval completed successfully")
                         completion(true)
                     } else {
-                        logWarning("⚠ Dive enumeration successful but no dives found")
+                        logWarning("⚠ No new dives found")
                         viewModel.progress = .completed
                         completion(true)
                     }

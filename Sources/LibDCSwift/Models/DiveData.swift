@@ -68,15 +68,29 @@ public struct DecoModel {
         case none
         case buhlmann
         case vpm
-        case rgbm
+        case rgbm(variant: RGBMVariant)
         case dciem
+        
+        public enum RGBMVariant {
+            case suuntoFused
+            case suuntoFused2
+            case generic
+            
+            var description: String {
+                switch self {
+                case .suuntoFused: return "Suunto Fused RGBM"
+                case .suuntoFused2: return "Suunto Fused2 RGBM"
+                case .generic: return "RGBM"
+                }
+            }
+        }
         
         public var description: String {
             switch self {
             case .none: return "None"
             case .buhlmann: return "Bühlmann"
             case .vpm: return "VPM"
-            case .rgbm: return "RGBM"
+            case .rgbm(let variant): return variant.description
             case .dciem: return "DCIEM"
             }
         }
@@ -84,13 +98,22 @@ public struct DecoModel {
     
     public let type: DecoType
     public let conservatism: Int
-    public let gfLow: UInt
-    public let gfHigh: UInt
+    public let gfLow: UInt32?
+    public let gfHigh: UInt32?
     
     public var description: String {
         switch type {
         case .buhlmann:
-            return "Bühlmann \(gfLow)/\(gfHigh)"
+            if let low = gfLow, let high = gfHigh {
+                return "Bühlmann GF \(low)/\(high)"
+            }
+            return "Bühlmann"
+        case .rgbm(let variant):
+            if conservatism != 0 {
+                return "\(variant.description) (\(conservatism))"
+            } else {
+                return variant.description
+            }
         case .none:
             return "None"
         default:

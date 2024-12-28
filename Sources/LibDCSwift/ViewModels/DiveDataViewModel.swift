@@ -109,7 +109,7 @@ public class DiveDataViewModel: ObservableObject {
     
     public func updateProgress(current: Int) {
         DispatchQueue.main.async {
-            self.status = "Downloading dive \(current)"
+            self.status = "Downloading Dive \(current)"
             self.progress = .inProgress(current: current)
         }
     }
@@ -149,6 +149,16 @@ public class DiveDataViewModel: ObservableObject {
             }
             
             self.progress = .error("\(message): \(statusDescription)")
+        }
+    }
+    
+    public func appendDives(_ newDives: [DiveData]) {
+        DispatchQueue.main.async {
+            // Optionally check for duplicates or merge with existing dives
+            self.dives.append(contentsOf: newDives)
+            if case .inProgress = self.progress {
+                self.progress = .inProgress(current: self.dives.count)
+            }
         }
     }
 } 
