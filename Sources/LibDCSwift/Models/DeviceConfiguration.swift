@@ -101,6 +101,23 @@ import LibDCBridge
         public static let predator: UInt32 = 2
     }
     
+    private static let knownServiceUUIDs: [CBUUID] = [
+        CBUUID(string: "0000fefb-0000-1000-8000-00805f9b34fb"), // Heinrichs-Weikamp Telit/Stollmann
+        CBUUID(string: "2456e1b9-26e2-8f83-e744-f34f01e9d701"), // Heinrichs-Weikamp U-Blox
+        CBUUID(string: "544e326b-5b72-c6b0-1c46-41c1bc448118"), // Mares BlueLink Pro
+        CBUUID(string: "6e400001-b5a3-f393-e0a9-e50e24dcca9e"), // Nordic Semi UART
+        CBUUID(string: "98ae7120-e62e-11e3-badd-0002a5d5c51b"), // Suunto EON Steel/Core
+        CBUUID(string: "cb3c4555-d670-4670-bc20-b61dbc851e9a"), // Pelagic i770R/i200C
+        CBUUID(string: "ca7b0001-f785-4c38-b599-c7c5fbadb034"), // Pelagic i330R/DSX
+        CBUUID(string: "fdcdeaaa-295d-470e-bf15-04217b7aa0a0"), // ScubaPro G2/G3
+        CBUUID(string: "fe25c237-0ece-443c-b0aa-e02033e7029d"), // Shearwater Perdix/Teric
+        CBUUID(string: "0000fcef-0000-1000-8000-00805f9b34fb")  // Divesoft Freedom
+    ]
+    
+    public static func getKnownServiceUUIDs() -> [CBUUID] {
+        return knownServiceUUIDs
+    }
+    
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
         logDebug("Attempting to open BLE device: \(name) at address: \(deviceAddress)")
         
@@ -110,7 +127,7 @@ import LibDCBridge
         
         // Try to get stored device info first
         if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: deviceAddress) {
-            logDebug("Found stored device configuration")
+            logDebug("Found stored device configuration - Family: \(storedDevice.family), Model: \(storedDevice.model)")
             let openStatus = open_ble_device(
                 deviceData,
                 deviceAddress.cString(using: .utf8),
@@ -120,9 +137,11 @@ import LibDCBridge
             
             if openStatus == DC_STATUS_SUCCESS {
                 logDebug("Successfully opened device using stored configuration")
+                logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
                 CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
                 return true
             }
+            logDebug("Failed to open with stored config (status: \(openStatus)), falling back to identification")
             // If stored config fails, fall through to normal identification
         }
         
@@ -137,6 +156,7 @@ import LibDCBridge
         
         guard status == DC_STATUS_SUCCESS else {
             logError("Failed to identify device: \(status)")
+            deviceData.deallocate()
             return false
         }
         
@@ -150,7 +170,8 @@ import LibDCBridge
         )
         
         if openStatus == DC_STATUS_SUCCESS {
-            logDebug("Successfully opened device")
+            logDebug("Successfully opened device with new configuration")
+            logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
             CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
             return true
         } else {

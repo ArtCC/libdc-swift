@@ -102,6 +102,8 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
     }
     @Published public var isDisconnecting = false
+    @Published public var isBluetoothReady = false
+    private var pendingOperations: [() -> Void] = []
     
     private override init() {
         super.init()
@@ -238,28 +240,49 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         switch central.state {
         case .poweredOn:
             logInfo("Bluetooth is powered on")
+            isBluetoothReady = true
+            pendingOperations.forEach { $0() }
+            pendingOperations.removeAll()
         case .poweredOff:
             logWarning("Bluetooth is powered off")
+            isBluetoothReady = false
         case .resetting:
             logWarning("Bluetooth is resetting")
+            isBluetoothReady = false
         case .unauthorized:
             logError("Bluetooth is unauthorized")
+            isBluetoothReady = false
         case .unsupported:
             logError("Bluetooth is unsupported")
+            isBluetoothReady = false
         case .unknown:
             logWarning("Bluetooth state is unknown")
+            isBluetoothReady = false
         @unknown default:
             logWarning("Unknown Bluetooth state")
+            isBluetoothReady = false
         }
     }
     
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         logInfo("Successfully connected to \(peripheral.name ?? "Unknown Device")")
+        
+        // First set up the peripheral
+        peripheral.delegate = self
+        
         DispatchQueue.main.async {
             self.isPeripheralReady = true
             self.connectedDevice = peripheral
+            
+            // // If this was a stored device, try to open it
+            // if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) {
+            //     if DeviceConfiguration.openBLEDevice(name: storedDevice.name, deviceAddress: storedDevice.uuid) {
+            //         logDebug("Device opened successfully, device pointer: \(String(describing: self.openedDeviceDataPtr))")
+            //     } else {
+            //         logError("Failed to open device")
+            //     }
+            // }
         }
-        peripheral.delegate = self
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -294,8 +317,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         if peripheral.name != nil {
             logDebug("Discovered \(peripheral.name ?? "unnamed device")")
-            if !discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
-                discoveredPeripherals.append(peripheral)
+            
+            // Add the peripheral if:
+            // 1. It's a stored device
+            // 2. It's a supported device
+            // 3. We haven't already added it
+            if DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) != nil ||
+               DeviceConfiguration.identifyDevice(name: peripheral.name ?? "") != nil {
+                addDiscoveredPeripheral(peripheral)
             }
         }
     }
@@ -552,6 +581,28 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         
         // Then cancel the connection
         centralManager.cancelPeripheralConnection(peripheral)
+    }
+
+    public func clearDiscoveredPeripherals() {
+        DispatchQueue.main.async {
+            self.discoveredPeripherals.removeAll()
+        }
+    }
+    
+    public func addDiscoveredPeripheral(_ peripheral: CBPeripheral) {
+        DispatchQueue.main.async {
+            if !self.discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
+                self.discoveredPeripherals.append(peripheral)
+            }
+        }
+    }
+
+    public func queueOperation(_ operation: @escaping () -> Void) {
+        if isBluetoothReady {
+            operation()
+        } else {
+            pendingOperations.append(operation)
+        }
     }
 }
 
