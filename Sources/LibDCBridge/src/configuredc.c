@@ -311,3 +311,38 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
 
     return rc;
 }
+
+dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context, 
+    dc_family_t family, unsigned int model, const unsigned char *data, size_t size) 
+{
+    dc_status_t rc;
+    dc_descriptor_t *descriptor = NULL;
+    dc_iterator_t *iterator = NULL;
+
+    // Find descriptor matching family and model
+    rc = dc_descriptor_iterator(&iterator);
+    if (rc != DC_STATUS_SUCCESS) {
+        return rc;
+    }
+
+    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+        if (dc_descriptor_get_type(descriptor) == family &&
+            dc_descriptor_get_model(descriptor) == model) {
+            break;
+        }
+        dc_descriptor_free(descriptor);
+        descriptor = NULL;
+    }
+
+    dc_iterator_free(iterator);
+
+    if (!descriptor) {
+        return DC_STATUS_UNSUPPORTED;
+    }
+
+    // Create parser
+    rc = dc_parser_new2(parser, context, descriptor, data, size);
+    dc_descriptor_free(descriptor);
+
+    return rc;
+}

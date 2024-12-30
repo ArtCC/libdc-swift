@@ -1,9 +1,9 @@
 import Foundation
+import UIKit
 import CoreBluetooth
 import Clibdivecomputer
 import LibDCBridge
 import Combine
-import UIKit
 
 @objc(SerialService)
 class SerialService: NSObject {

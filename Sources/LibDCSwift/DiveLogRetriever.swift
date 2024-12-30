@@ -3,15 +3,18 @@ import Foundation
 import UIKit
 #endif
 
+/// A class responsible for retrieving dive logs from connected dive computers.
+/// Handles the communication with the device, data parsing, and progress tracking.
 public class DiveLogRetriever {
+    /// Internal context class to maintain state during dive log retrieval.
     private class CallbackContext {
-        var logCount: Int = 1
-        var totalLogs: Int = 0
-        let viewModel: DiveDataViewModel
-        var lastFingerprint: Data?
-        let deviceName: String
-        var isCancelled: Bool = false  
-        var newDives: [DiveData] = []
+        var logCount: Int = 1 /// Current dive log being processed
+        var totalLogs: Int = 0 /// Total number of dive logs to process
+        let viewModel: DiveDataViewModel /// View model to update UI and store dive data
+        var lastFingerprint: Data? /// Fingerprint of the last processed dive
+        let deviceName: String /// Name of the device being processed
+        var isCancelled: Bool = false  /// Flag to indicate if the retrieval process was cancelled 
+        var newDives: [DiveData] = [] /// Array to store newly retrieved dives
         
         init(viewModel: DiveDataViewModel, deviceName: String) {
             self.viewModel = viewModel
@@ -19,6 +22,15 @@ public class DiveLogRetriever {
         }
     }
 
+    /// C-compatible callback closure for processing individual dive logs.
+    /// This is called by libdivecomputer for each dive found on the device.
+    /// - Parameters:
+    ///   - data: Raw dive data
+    ///   - size: Size of the dive data
+    ///   - fingerprint: Unique identifier for the dive
+    ///   - fsize: Size of the fingerprint
+    ///   - userdata: Context data for the callback
+    /// - Returns: 1 if successful, 0 if failed
     private static let diveCallbackClosure: @convention(c) (
         UnsafePointer<UInt8>?,
         UInt32,
@@ -75,15 +87,21 @@ public class DiveLogRetriever {
             return 0
         }
         
-        // Increment counter after using it
         context.logCount += 1
-        return 1 // Return 1 on successful processing
+        return 1 
     }
     
     #if os(iOS)
     private static var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     #endif
     
+    /// Retrieves dive logs from a connected dive computer.
+    /// - Parameters:
+    ///   - devicePtr: Pointer to the device data structure
+    ///   - device: The CoreBluetooth peripheral representing the dive computer
+    ///   - viewModel: View model to update UI and store dive data
+    ///   - onProgress: Optional callback for progress updates
+    ///   - completion: Called when retrieval completes or fails
     public static func retrieveDiveLogs(
         from devicePtr: UnsafeMutablePointer<device_data_t>,
         device: CBPeripheral,
@@ -91,7 +109,6 @@ public class DiveLogRetriever {
         onProgress: ((Int, Int) -> Void)? = nil,
         completion: @escaping (Bool) -> Void
     ) {
-        // Create a dedicated background queue for dive log retrieval
         let retrievalQueue = DispatchQueue(label: "com.libdcswift.retrieval", qos: .userInitiated)
         
         #if os(iOS)
@@ -176,7 +193,9 @@ public class DiveLogRetriever {
     #endif
 } 
 
+/// Extension to convert Data to hexadecimal string representation
 extension Data {
+    /// Returns a hexadecimal string representation of the data
     var hexString: String {
         return map { String(format: "%02hhx", $0) }.joined()
     }

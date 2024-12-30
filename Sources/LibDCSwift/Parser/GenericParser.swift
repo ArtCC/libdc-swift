@@ -75,14 +75,23 @@ import Clibdivecomputer
  - TISSUELEVEL: Tissue saturation
 */
 
-public enum ParserError: Error {
-    case invalidParameters
-    case parserCreationFailed(dc_status_t)
-    case datetimeRetrievalFailed(dc_status_t)
-    case sampleProcessingFailed(dc_status_t)
-}
-
-public class GenericParser {    
+/// A generic parser for dive computer data that supports multiple device families.
+/// Uses libdivecomputer's parsing capabilities to extract dive information.
+public class GenericParser {
+    /// Error types that can occur during parsing
+    public enum ParserError: Error {
+        case invalidParameters /// Invalid parameters provided to the parser
+        case parserCreationFailed(dc_status_t) /// Failed to create the parser
+        case datetimeRetrievalFailed(dc_status_t) /// Failed to retrieve datetime information
+        case fieldRetrievalFailed(dc_status_t) /// Failed to retrieve field data
+    }
+    
+    /// Retrieves a specific field from the dive data parser
+    /// - Parameters:
+    ///   - parser: The libdivecomputer parser instance
+    ///   - type: Type of field to retrieve
+    ///   - flags: Optional flags for field retrieval
+    /// - Returns: The field value if successful, nil otherwise
     private static func getField<T>(_ parser: OpaquePointer?, type: dc_field_type_t, flags: UInt32 = 0) -> T? {
         let value = UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<T>.size, alignment: MemoryLayout<T>.alignment)
         defer { value.deallocate() }
@@ -93,9 +102,12 @@ public class GenericParser {
         return value.load(as: T.self)
     }
     
+    /// Wrapper class for collecting sample data during parsing
     private class SampleDataWrapper {
+        /// The collected sample data
         var data = SampleData()
         
+        /// Adds a new profile point from current sample data
         func addProfilePoint() {
             let point = DiveProfilePoint(
                 time: data.time,
@@ -120,15 +132,29 @@ public class GenericParser {
             }
         }
         
+        /// Adds tank information to the sample data
+        /// - Parameter tank: Tank information from the dive computer
         func addTank(_ tank: dc_tank_t) {
             data.tanks.append(GenericParser.convertTank(tank))
         }
         
+        /// Sets the decompression model used for the dive
+        /// - Parameter model: Decompression model information
         func setDecoModel(_ model: dc_decomodel_t) {
             data.decoModel = GenericParser.convertDecoModel(model)
         }
     }
     
+    /// Parses raw dive data into a structured DiveData object
+    /// - Parameters:
+    ///   - family: The family of the dive computer
+    ///   - model: The specific model number
+    ///   - diveNumber: Sequential number of the dive
+    ///   - diveData: Raw data from the dive computer
+    ///   - dataSize: Size of the raw data
+    ///   - context: Optional parser context
+    /// - Returns: A structured DiveData object
+    /// - Throws: ParserError if parsing fails
     public static func parseDiveData(
         family: DeviceConfiguration.DeviceFamily,
         model: UInt32,
@@ -140,21 +166,10 @@ public class GenericParser {
         logInfo("Creating parser for family: \(family), model: \(model), size: \(dataSize)")
         
         var parser: OpaquePointer?
-        var rc: dc_status_t
         
         // Create parser based on device family
-        switch family {
-        case .suuntoEonSteel:
-            logInfo("Using Suunto EON Steel parser")
-            rc = suunto_eonsteel_parser_create(&parser, context, diveData, dataSize, 0)
-        case .shearwaterPetrel:
-            logInfo("Using Shearwater Petrel parser")
-            rc = shearwater_petrel_parser_create(&parser, context, diveData, dataSize)
-        case .shearwaterPredator:
-            logInfo("Using Shearwater Predator parser")
-            rc = shearwater_predator_parser_create(&parser, context, diveData, dataSize)
-        }
-        
+        let rc = create_parser_for_device(&parser, context, family.asDCFamily, model, diveData, size_t(dataSize))
+
         guard rc == DC_STATUS_SUCCESS, parser != nil else {
             logError("❌ Parser creation failed with status: \(rc)")
             throw ParserError.parserCreationFailed(rc)

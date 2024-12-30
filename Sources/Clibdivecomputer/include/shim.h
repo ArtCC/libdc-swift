@@ -18,4 +18,7 @@
 #include <libdivecomputer/custom.h>
 #include <libdivecomputer/array.h>
 
+dc_status_t dc_parser_new2(dc_parser_t **parser, dc_context_t *context, dc_descriptor_t *descriptor, const unsigned char *data, size_t size);
+dc_descriptor_t *dc_descriptor_get(dc_family_t family, unsigned int model);
+
 #endif /* LIBDC_SHIM_H */

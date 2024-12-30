@@ -3,104 +3,72 @@ import Clibdivecomputer
 import LibDCBridge
 
 @objc public class DeviceConfiguration: NSObject {
+    /// Represents the family of dive computers that support BLE communication.
+    /// Only includes device families that have BLE-capable models.
     public enum DeviceFamily: String, Codable {
-        case shearwaterPredator
-        case shearwaterPetrel
         case suuntoEonSteel
+        case shearwaterPetrel
+        case hwOstc3
+        case uwatecSmart
+        case oceanicAtom2
+        case pelagicI330R
+        case maresIconHD
+        case deepsixExcursion
+        case deepbluCosmiq
+        case oceansS1
+        case mcleanExtreme
+        case divesoftFreedom
+        case cressiGoa
+        case diveSystem
         
+        /// Converts the Swift enum to libdivecomputer's dc_family_t type
         var asDCFamily: dc_family_t {
             switch self {
-            case .shearwaterPredator: return DC_FAMILY_SHEARWATER_PREDATOR
-            case .shearwaterPetrel: return DC_FAMILY_SHEARWATER_PETREL
             case .suuntoEonSteel: return DC_FAMILY_SUUNTO_EONSTEEL
+            case .shearwaterPetrel: return DC_FAMILY_SHEARWATER_PETREL
+            case .hwOstc3: return DC_FAMILY_HW_OSTC3
+            case .uwatecSmart: return DC_FAMILY_UWATEC_SMART
+            case .oceanicAtom2: return DC_FAMILY_OCEANIC_ATOM2
+            case .pelagicI330R: return DC_FAMILY_PELAGIC_I330R
+            case .maresIconHD: return DC_FAMILY_MARES_ICONHD
+            case .deepsixExcursion: return DC_FAMILY_DEEPSIX_EXCURSION
+            case .deepbluCosmiq: return DC_FAMILY_DEEPBLU_COSMIQ
+            case .oceansS1: return DC_FAMILY_OCEANS_S1
+            case .mcleanExtreme: return DC_FAMILY_MCLEAN_EXTREME
+            case .divesoftFreedom: return DC_FAMILY_DIVESOFT_FREEDOM
+            case .cressiGoa: return DC_FAMILY_CRESSI_GOA
+            case .diveSystem: return DC_FAMILY_DIVESYSTEM_IDIVE
+            case .maresIconHD: return DC_FAMILY_MARES_ICONHD
             }
         }
         
+        /// Creates a DeviceFamily instance from libdivecomputer's dc_family_t type
+        /// - Parameter dcFamily: The dc_family_t value to convert
+        /// - Returns: The corresponding DeviceFamily case, or nil if not supported
         init?(dcFamily: dc_family_t) {
             switch dcFamily {
-            case DC_FAMILY_SHEARWATER_PREDATOR: self = .shearwaterPredator
-            case DC_FAMILY_SHEARWATER_PETREL: self = .shearwaterPetrel
             case DC_FAMILY_SUUNTO_EONSTEEL: self = .suuntoEonSteel
+            case DC_FAMILY_SHEARWATER_PETREL: self = .shearwaterPetrel
+            case DC_FAMILY_HW_OSTC3: self = .hwOstc3
+            case DC_FAMILY_UWATEC_SMART: self = .uwatecSmart
+            case DC_FAMILY_OCEANIC_ATOM2: self = .oceanicAtom2
+            case DC_FAMILY_PELAGIC_I330R: self = .pelagicI330R
+            case DC_FAMILY_MARES_ICONHD: self = .maresIconHD
+            case DC_FAMILY_DEEPSIX_EXCURSION: self = .deepsixExcursion
+            case DC_FAMILY_DEEPBLU_COSMIQ: self = .deepbluCosmiq
+            case DC_FAMILY_OCEANS_S1: self = .oceansS1
+            case DC_FAMILY_MCLEAN_EXTREME: self = .mcleanExtreme
+            case DC_FAMILY_DIVESOFT_FREEDOM: self = .divesoftFreedom
+            case DC_FAMILY_CRESSI_GOA: self = .cressiGoa
+            case DC_FAMILY_DIVESYSTEM_IDIVE: self = .diveSystem
+            case DC_FAMILY_MARES_ICONHD: self = .maresIconHD
             default: return nil
             }
         }
-        
-        static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
-            let lowercaseName = name.lowercased()
-            
-            // Suunto models
-            if lowercaseName.contains("eon steel black") {
-                return (.suuntoEonSteel, SuuntoModel.eonSteelBlack)
-            } else if lowercaseName.contains("eon steel") {
-                return (.suuntoEonSteel, SuuntoModel.eonSteel)
-            } else if lowercaseName.contains("eon core") {
-                return (.suuntoEonSteel, SuuntoModel.eonCore)
-            } else if lowercaseName.contains("d5") {
-                return (.suuntoEonSteel, SuuntoModel.d5)
-            }
-            
-            // Shearwater Petrel models
-            else if lowercaseName.contains("petrel 3") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel3)
-            } else if lowercaseName.contains("petrel 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel2)
-            } else if lowercaseName.contains("petrel") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.petrel)
-            } else if lowercaseName.contains("perdix 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix2)
-            } else if lowercaseName.contains("perdix ai") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdixAI)
-            } else if lowercaseName.contains("perdix") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.perdix)
-            } else if lowercaseName.contains("nerd 2") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd2)
-            } else if lowercaseName.contains("nerd") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.nerd)
-            } else if lowercaseName.contains("teric") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.teric)
-            } else if lowercaseName.contains("peregrine tx") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrineTX)
-            } else if lowercaseName.contains("peregrine") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.peregrine)
-            } else if lowercaseName.contains("tern") {
-                return (.shearwaterPetrel, ShearwaterPetrelModel.tern)
-            }
-            
-            // Shearwater Predator models
-            else if lowercaseName.contains("predator") {
-                return (.shearwaterPredator, ShearwaterPredatorModel.predator)
-            }
-            
-            return nil
-        }
     }
     
-    public struct SuuntoModel {
-        public static let eonSteel: UInt32 = 0
-        public static let eonCore: UInt32 = 1
-        public static let d5: UInt32 = 2
-        public static let eonSteelBlack: UInt32 = 3
-    }
-    
-    public struct ShearwaterPetrelModel {
-        public static let petrel: UInt32 = 3
-        public static let petrel2: UInt32 = 3
-        public static let nerd: UInt32 = 4
-        public static let perdix: UInt32 = 5
-        public static let perdixAI: UInt32 = 6
-        public static let nerd2: UInt32 = 7
-        public static let teric: UInt32 = 8
-        public static let peregrine: UInt32 = 9
-        public static let petrel3: UInt32 = 10
-        public static let perdix2: UInt32 = 11
-        public static let tern: UInt32 = 12
-        public static let peregrineTX: UInt32 = 13
-    }
-    
-    public struct ShearwaterPredatorModel {
-        public static let predator: UInt32 = 2
-    }
-    
+    /// Known BLE service UUIDs for supported dive computers.
+    /// Used for device discovery and identification.
     private static let knownServiceUUIDs: [CBUUID] = [
         CBUUID(string: "0000fefb-0000-1000-8000-00805f9b34fb"), // Heinrichs-Weikamp Telit/Stollmann
         CBUUID(string: "2456e1b9-26e2-8f83-e744-f34f01e9d701"), // Heinrichs-Weikamp U-Blox
@@ -114,10 +82,21 @@ import LibDCBridge
         CBUUID(string: "0000fcef-0000-1000-8000-00805f9b34fb")  // Divesoft Freedom
     ]
     
+    /// Returns an array of known BLE service UUIDs for supported dive computers.
+    /// - Returns: Array of CBUUIDs representing known service UUIDs
     public static func getKnownServiceUUIDs() -> [CBUUID] {
         return knownServiceUUIDs
     }
     
+    /// Attempts to open a BLE connection to a dive computer.
+    /// This function will try multiple methods to identify and connect to the device:
+    /// 1. Use stored device information if available
+    /// 2. Use descriptor system to identify device
+    /// 3. Fall back to libdivecomputer's identify_ble_device
+    /// - Parameters:
+    ///   - name: The advertised name of the BLE device
+    ///   - deviceAddress: The device's UUID/MAC address
+    /// - Returns: True if connection was successful, false otherwise
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
         logDebug("Attempting to open BLE device: \(name) at address: \(deviceAddress)")
         
@@ -142,9 +121,26 @@ import LibDCBridge
                 return true
             }
             logDebug("Failed to open with stored config (status: \(openStatus)), falling back to identification")
-            // If stored config fails, fall through to normal identification
         }
         
+        // Use descriptor system to identify device
+        if let (family, model) = fromName(name) {
+            let openStatus = open_ble_device(
+                deviceData,
+                deviceAddress.cString(using: .utf8),
+                family.asDCFamily,
+                model
+            )
+            
+            if openStatus == DC_STATUS_SUCCESS {
+                logDebug("Successfully opened device with descriptor configuration")
+                logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
+                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                return true
+            }
+        }
+        
+        // Fall back to libdivecomputer's identify_ble_device
         var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
@@ -181,11 +177,89 @@ import LibDCBridge
         }
     }
     
+    /// Attempts to identify a dive computer's family and model from its name.
+    /// This function tries two methods:
+    /// 1. Use libdivecomputer's descriptor system
+    /// 2. Fall back to libdivecomputer's identify_ble_device
+    /// - Parameter name: The advertised name of the BLE device
+    /// - Returns: A tuple containing the device family and model number, or nil if not identified
     public static func identifyDevice(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        return DeviceFamily.fromName(name) ?? identifyDeviceFromDescriptor(name: name)
+        return fromName(name) ?? identifyDeviceFromDescriptor(name: name)
     }
     
-    public static func identifyDeviceFromDescriptor(name: String) -> (family: DeviceFamily, model: UInt32)? {
+    /// Attempts to identify a device's family and model number from its name using libdivecomputer's descriptor system.
+    /// Only considers BLE-capable devices.
+    /// - Parameter name: The device name to identify
+    /// - Returns: A tuple containing the device family and model number, or nil if not identified
+    static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
+        if let descriptor = findMatchingDescriptor(for: name) {
+            let family = dc_descriptor_get_type(descriptor)
+            let model = dc_descriptor_get_model(descriptor)
+            
+            if let deviceFamily = DeviceFamily(dcFamily: family) {
+                return (deviceFamily, model)
+            }
+        }
+        return nil
+    }
+    
+    /// Returns a human-readable display name for a device using libdivecomputer's vendor and product information.
+    /// Only considers BLE-capable devices.
+    /// - Parameter name: The device name to get display name for
+    /// - Returns: A formatted string containing the vendor and product name, or "Unknown Device" if not found
+    public static func getDeviceDisplayName(from name: String) -> String {
+        if let descriptor = findMatchingDescriptor(for: name),
+           let vendor = dc_descriptor_get_vendor(descriptor),
+           let product = dc_descriptor_get_product(descriptor) {
+            return "\(String(cString: vendor)) \(String(cString: product))"
+        }
+        return "Unknown Device"
+    }
+    
+    /// Helper function that encapsulates the common descriptor iteration logic.
+    /// Only considers BLE-capable devices.
+    /// - Parameter name: The device name to find a descriptor for
+    /// - Returns: A matching descriptor if found, nil otherwise
+    private static func findMatchingDescriptor(for name: String) -> OpaquePointer? {
+        var iterator: OpaquePointer?
+        guard dc_descriptor_iterator(&iterator) == DC_STATUS_SUCCESS else {
+            return nil
+        }
+        defer { dc_iterator_free(iterator) }
+        
+        let lowercaseName = name.lowercased()
+        var descriptor: OpaquePointer?
+        var matchingDescriptor: OpaquePointer?
+        
+        while dc_iterator_next(iterator, &descriptor) == DC_STATUS_SUCCESS {
+            defer {
+                if matchingDescriptor == nil {
+                    dc_descriptor_free(descriptor)
+                }
+            }
+            
+            let transports = dc_descriptor_get_transports(descriptor)
+            guard (transports & DC_TRANSPORT_BLE.rawValue) != 0 else { continue }
+            
+            guard let vendor = dc_descriptor_get_vendor(descriptor),
+                  let product = dc_descriptor_get_product(descriptor) else { continue }
+            
+            let vendorStr = String(cString: vendor).lowercased()
+            let productStr = String(cString: product).lowercased()
+            if lowercaseName.contains(vendorStr) || lowercaseName.contains(productStr) {
+                matchingDescriptor = descriptor
+                break
+            }
+        }
+        
+        return matchingDescriptor
+    }
+    
+    /// Attempts to identify a device using libdivecomputer's built-in identification function.
+    /// Used as a fallback when descriptor-based identification fails.
+    /// - Parameter name: The device name to identify
+    /// - Returns: A tuple containing the device family and model number, or nil if not identified
+    private static func identifyDeviceFromDescriptor(name: String) -> (family: DeviceFamily, model: UInt32)? {
         var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
