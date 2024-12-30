@@ -113,7 +113,7 @@ public class DiveDataViewModel: ObservableObject {
     
     public func updateProgress(current: Int) {
         DispatchQueue.main.async {
-            self.status = "Downloading Dive \(current)"
+            self.status = "Downloading Dive #\(current)"
             self.progress = .inProgress(current: current)
         }
     }

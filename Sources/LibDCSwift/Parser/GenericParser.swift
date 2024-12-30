@@ -84,6 +84,7 @@ public class GenericParser {
         case parserCreationFailed(dc_status_t) /// Failed to create the parser
         case datetimeRetrievalFailed(dc_status_t) /// Failed to retrieve datetime information
         case fieldRetrievalFailed(dc_status_t) /// Failed to retrieve field data
+        case sampleProcessingFailed(dc_status_t) /// Failed at processing dive samples
     }
     
     /// Retrieves a specific field from the dive data parser
@@ -163,8 +164,6 @@ public class GenericParser {
         dataSize: Int,
         context: OpaquePointer? = nil
     ) throws -> DiveData {
-        logInfo("Creating parser for family: \(family), model: \(model), size: \(dataSize)")
-        
         var parser: OpaquePointer?
         
         // Create parser based on device family
