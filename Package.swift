@@ -23,7 +23,8 @@ let package = Package(
             path: "libdivecomputer",
             exclude: [
                 "doc",
-                "m4"
+                "m4",
+                "include/libdivecomputer/version.h"
             ],
             publicHeadersPath: "include",
             cSettings: [
