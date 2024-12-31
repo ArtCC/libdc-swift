@@ -125,6 +125,7 @@ public class DiveLogRetriever {
                     
                     DispatchQueue.main.async {
                         context.viewModel.appendDives([diveData])  
+                        context.viewModel.objectWillChange.send()
                         logInfo("✅ Successfully parsed and added dive #\(currentDiveNumber)")
                     }
                 } catch {
