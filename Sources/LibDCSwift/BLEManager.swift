@@ -5,6 +5,7 @@ import Clibdivecomputer
 import LibDCBridge
 import Combine
 
+/// Represents a BLE serial service with its identifying information
 @objc(SerialService)
 class SerialService: NSObject {
     @objc let uuid: String
@@ -25,29 +26,50 @@ extension CBUUID {
     }
 }
 
+/// Central manager for handling BLE communications with dive computers
 @objc(CoreBluetoothManager)
 public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
-    @objc public static let shared = CoreBluetoothManager()
-    @objc private var timeout: Int = -1 // default to no timeout
-
-    @Published public var centralManager: CBCentralManager!
-    @Published public var peripheral: CBPeripheral?
-    @Published public var discoveredPeripherals: [CBPeripheral] = []
+    // MARK: - Singleton
+    @objc public static let shared = CoreBluetoothManager() // Shared instance of the BLE manager
     
+    // MARK: - Published Properties
+    @Published public var centralManager: CBCentralManager! // Core Bluetooth central manager instance
+    @Published public var peripheral: CBPeripheral? // Currently selected peripheral device
+    @Published public var discoveredPeripherals: [CBPeripheral] = [] // List of discovered BLE peripherals
+    @Published public var isPeripheralReady = false // Indicates if peripheral is ready for communication
+    @Published @objc dynamic public var connectedDevice: CBPeripheral? // Currently connected peripheral device
+    @Published public var isScanning = false // Indicates if currently scanning for devices
+    @Published public var isRetrievingLogs = false { // Indicates if currently retrieving dive logs
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    @Published public var currentRetrievalDevice: CBPeripheral? { // Device currently being used for log retrieval
+        didSet {
+            objectWillChange.send()
+        }
+    }
+    @Published public var isDisconnecting = false // Indicates if currently disconnecting from device
+    @Published public var isBluetoothReady = false // Indicates if Bluetooth is ready for use
+    @Published private var deviceDataPtrChanged = false
+
+    // MARK: - Private Properties
+    @objc private var timeout: Int = -1 // default to no timeout
     private var writeCharacteristic: CBCharacteristic?
     private var notifyCharacteristic: CBCharacteristic?
-    
-    @Published public var isPeripheralReady = false
-    @Published @objc dynamic public var connectedDevice: CBPeripheral?
-    @Published public var isScanning = false
-
     private var receivedData: Data = Data()
     private let queue = DispatchQueue(label: "com.blemanager.queue")
     private let frameMarker: UInt8 = 0x7E
-    
-    private var _deviceDataPtr: UnsafeMutablePointer<device_data_t>?
-    
-    public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>? {
+    private var _deviceDataPtr: UnsafeMutablePointer<device_data_t>? // Device data pointer for libdivecomputer integration
+    private var connectionCompletion: ((Bool) -> Void)?
+    private var totalBytesReceived: Int = 0
+    private var lastDataReceived: Date?
+    private var averageTransferRate: Double = 0
+    private var preferredService: CBService?
+    private var pendingOperations: [() -> Void] = []
+
+    // MARK: - Public Properties
+    public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>? { // Public access to device data pointer with change notification
         get {
             _deviceDataPtr
         }
@@ -58,18 +80,11 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
     }
     
-    @Published private var deviceDataPtrChanged = false
-    
     public func hasValidDeviceDataPtr() -> Bool {
         return openedDeviceDataPtr != nil
     }
     
-    private var connectionCompletion: ((Bool) -> Void)?
-    
-    private var totalBytesReceived: Int = 0
-    private var lastDataReceived: Date?
-    private var averageTransferRate: Double = 0
-    
+    // MARK: - Serial Services 
     @objc private let knownSerialServices: [SerialService] = [
         SerialService(uuid: "0000fefb-0000-1000-8000-00805f9b34fb", vendor: "Heinrichs-Weikamp", product: "Telit/Stollmann"),
         SerialService(uuid: "2456e1b9-26e2-8f83-e744-f34f01e9d701", vendor: "Heinrichs-Weikamp", product: "U-Blox"),
@@ -82,54 +97,33 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         SerialService(uuid: "fe25c237-0ece-443c-b0aa-e02033e7029d", vendor: "Shearwater", product: "Perdix/Teric"),
         SerialService(uuid: "0000fcef-0000-1000-8000-00805f9b34fb", vendor: "Divesoft", product: "Freedom")
     ]
-    
     private let excludedServices: Set<String> = [
         "00001530-1212-efde-1523-785feabcd123", // Nordic Upgrade
         "9e5d1e47-5c13-43a0-8635-82ad38a1386f", // Broadcom Upgrade #1
         "a86abc2d-d44c-442e-99f7-80059a873e36"  // Broadcom Upgrade #2
     ]
     
-    private var preferredService: CBService?
-    
-    @Published public var isRetrievingLogs = false {
-        didSet {
-            objectWillChange.send()
-        }
-    }
-    @Published public var currentRetrievalDevice: CBPeripheral? {
-        didSet {
-            objectWillChange.send()
-        }
-    }
-    @Published public var isDisconnecting = false
-    @Published public var isBluetoothReady = false
-    private var pendingOperations: [() -> Void] = []
-    
+    // MARK: - Initialization
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
     
+    // MARK: - Service Discovery
     @objc internal func discoverServices() -> Bool {
         guard let peripheral = self.peripheral else { return false }
-        
         peripheral.discoverServices(nil)
-        
-        // Wait for service discovery (you might want to implement a timeout here)
         while writeCharacteristic == nil || notifyCharacteristic == nil {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
         }
         
         return writeCharacteristic != nil && notifyCharacteristic != nil
     }
-
+    
     @objc internal func enableNotifications() -> Bool {
         guard let notifyCharacteristic = self.notifyCharacteristic,
               let peripheral = self.peripheral else { return false }
-        
         peripheral.setNotifyValue(true, for: notifyCharacteristic)
-        
-        // Wait for notification to be enabled (you might want to implement a timeout here)
         while !notifyCharacteristic.isNotifying {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
         }
@@ -137,35 +131,31 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return notifyCharacteristic.isNotifying
     }
     
+    // MARK: - Data Handling
     private func findNextCompleteFrame() -> Data? {
         var frameToReturn: Data? = nil
         
         queue.sync {
-            // Look for frame start
             guard let startIndex = receivedData.firstIndex(of: frameMarker) else {
                 return
             }
             
-            // Look for frame end after start marker
             let afterStart = receivedData.index(after: startIndex)
             guard afterStart < receivedData.count,
                   let endIndex = receivedData[afterStart...].firstIndex(of: frameMarker) else {
                 return
             }
             
-            // Extract the complete frame including markers
             let frameEndIndex = receivedData.index(after: endIndex)
             let frame = receivedData[startIndex..<frameEndIndex]
             
-            // Remove the frame from buffer
             receivedData.removeSubrange(startIndex..<frameEndIndex)
-            
             frameToReturn = Data(frame)
         }
         
         return frameToReturn
     }
-
+    
     @objc public func writeData(_ data: Data) -> Bool {
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
@@ -173,17 +163,38 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return true
     }
     
-    @objc public func close(clearDevicePtr: Bool = false) {
-        // Set disconnecting state
-        isDisconnecting = true
+    @objc public func readDataPartial(_ requested: Int) -> Data? {
+        let startTime = Date()
+        let partialTimeout: TimeInterval = 1.0
         
-        // First clear all state on main thread to ensure UI updates properly
+        while true {
+            var outData: Data?
+            queue.sync {
+                if receivedData.count > 0 {
+                    let amount = min(requested, receivedData.count)
+                    outData = receivedData.prefix(amount)
+                    receivedData.removeSubrange(0..<amount)
+                }
+            }
+            
+            if let data = outData {
+                return data
+            }
+            
+            if Date().timeIntervalSince(startTime) > partialTimeout {
+                return nil
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
+        }
+    }
+    
+    // MARK: - Device Management
+    @objc public func close(clearDevicePtr: Bool = false) {
+        isDisconnecting = true
         DispatchQueue.main.async {
             self.isPeripheralReady = false
             self.connectedDevice = nil
         }
-        
-        // Clear the receive buffer
         queue.sync {
             if !receivedData.isEmpty {
                 logInfo("Clearing \(receivedData.count) bytes from receive buffer")
@@ -191,7 +202,6 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             }
         }
         
-        // Handle device pointer cleanup if requested
         if clearDevicePtr {
             if let devicePtr = self.openedDeviceDataPtr {
                 logDebug("Closing device data pointer")
@@ -205,20 +215,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             }
         }
         
-        // Store local reference to peripheral before clearing state
         if let peripheral = self.peripheral {
             logDebug("Disconnecting peripheral")
-            
-            // Clear all connection-related state
             self.writeCharacteristic = nil
             self.notifyCharacteristic = nil
             self.peripheral = nil
-            
-            // Finally cancel the connection
             centralManager.cancelPeripheralConnection(peripheral)
         }
         
-        // Reset disconnecting state after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.isDisconnecting = false
         }
@@ -234,8 +238,119 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         isScanning = false
     }
     
-    // MARK: - CBCentralManagerDelegate Methods
+    @objc public func connectToDevice(_ address: String) -> Bool {
+        guard let uuid = UUID(uuidString: address),
+              let peripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first else {
+            return false
+        }
+        
+        self.peripheral = peripheral
+        peripheral.delegate = self
+        centralManager.connect(peripheral, options: nil)
+        return true  // Return immediately, connection status will be handled by delegate
+    }
     
+    public func connectToStoredDevice(_ uuid: String) -> Bool {
+        guard let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: uuid) else {
+            return false
+        }
+        
+        return DeviceConfiguration.openBLEDevice(
+            name: storedDevice.name,
+            deviceAddress: storedDevice.uuid
+        )
+    }
+    
+    // MARK: - State Management
+    public func clearRetrievalState() {
+        logDebug("🧹 Clearing retrieval state")
+        DispatchQueue.main.async { [weak self] in
+            self?.isRetrievingLogs = false
+            self?.currentRetrievalDevice = nil
+        }
+    }
+    
+    public func setBackgroundMode(_ enabled: Bool) {
+        if enabled {
+            // Set connection parameters for background operation
+            if let peripheral = peripheral {
+                // For iOS/macOS, we can only ensure the connection stays alive
+                // by maintaining the peripheral reference and keeping the central manager active
+                logInfo("Setting up background mode for peripheral: \(peripheral.identifier)")
+                
+                #if os(iOS)
+                // On iOS, we can request background execution time
+                var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+                backgroundTask = UIApplication.shared.beginBackgroundTask { [backgroundTask] in
+                    // Cleanup callback
+                    if backgroundTask != .invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTask)
+                    }
+                }
+                
+                // Store the task identifier for later cleanup
+                currentBackgroundTask = backgroundTask
+                #endif
+            }
+        } else {
+            logInfo("Disabling background mode")
+            #if os(iOS)
+            // Clean up any background tasks when disabling background mode
+            if let peripheral = peripheral {
+                logInfo("Cleaning up background mode for peripheral: \(peripheral.identifier)")
+                if let task = currentBackgroundTask, task != .invalid {
+                    UIApplication.shared.endBackgroundTask(task)
+                    currentBackgroundTask = nil
+                }
+            }
+            #endif
+        }
+    }
+
+    // track background tasks
+    #if os(iOS)
+    private var currentBackgroundTask: UIBackgroundTaskIdentifier?
+    #endif
+
+    public func systemDisconnect(_ peripheral: CBPeripheral) {
+        logInfo("Performing system-level disconnect for \(peripheral.name ?? "Unknown Device")")
+        
+        // Clear state first
+        DispatchQueue.main.async {
+            self.isPeripheralReady = false
+            self.connectedDevice = nil
+            self.writeCharacteristic = nil
+            self.notifyCharacteristic = nil
+            self.peripheral = nil
+        }
+        
+        // Then cancel the connection
+        centralManager.cancelPeripheralConnection(peripheral)
+    }
+    
+    public func clearDiscoveredPeripherals() {
+        DispatchQueue.main.async {
+            self.discoveredPeripherals.removeAll()
+        }
+    }
+    
+    public func addDiscoveredPeripheral(_ peripheral: CBPeripheral) {
+        DispatchQueue.main.async {
+            if !self.discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
+                self.discoveredPeripherals.append(peripheral)
+            }
+        }
+    }
+
+    public func queueOperation(_ operation: @escaping () -> Void) {
+        if isBluetoothReady {
+            operation()
+        } else {
+            pendingOperations.append(operation)
+        }
+    }
+    
+    // MARK: - CBCentralManagerDelegate Methods
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
@@ -266,28 +381,15 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         logInfo("Successfully connected to \(peripheral.name ?? "Unknown Device")")
-        
-        // First set up the peripheral
         peripheral.delegate = self
-        
         DispatchQueue.main.async {
             self.isPeripheralReady = true
             self.connectedDevice = peripheral
-            
-            // // If this was a stored device, try to open it
-            // if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) {
-            //     if DeviceConfiguration.openBLEDevice(name: storedDevice.name, deviceAddress: storedDevice.uuid) {
-            //         logDebug("Device opened successfully, device pointer: \(String(describing: self.openedDeviceDataPtr))")
-            //     } else {
-            //         logError("Failed to open device")
-            //     }
-            // }
         }
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         logError("Failed to connect to \(peripheral.name ?? "Unknown Device"): \(error?.localizedDescription ?? "No error description")")
-        // You can post a notification or use any other method to inform about failed connection
     }
 
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -328,7 +430,8 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             }
         }
     }
-    
+
+    // MARK: - CBPeripheral Methods
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             logError("Error discovering services: \(error.localizedDescription)")
@@ -406,9 +509,6 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             if Logger.shared.shouldShowRawData {
                 logDebug("Buffer: \(receivedData.hexEncodedString())")
             }
-            
-            // Optional: Notify waiting readers that new data is available
-            // This could be implemented via a condition variable or similar mechanism
         }
         
         updateTransferStats(data.count)
@@ -430,43 +530,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
     }
 
-    @objc public func readDataPartial(_ requested: Int) -> Data? {
-        let startTime = Date()
-        let partialTimeout: TimeInterval = 1.0
-        
-        while true {
-            var outData: Data?
-            queue.sync {
-                if receivedData.count > 0 {
-                    let amount = min(requested, receivedData.count)
-                    outData = receivedData.prefix(amount)
-                    receivedData.removeSubrange(0..<amount)
-                }
-            }
-            
-            if let data = outData {
-                return data
-            }
-            
-            if Date().timeIntervalSince(startTime) > partialTimeout {
-                return nil
-            }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
-        }
-    }
-
-    @objc public func connectToDevice(_ address: String) -> Bool {
-        guard let uuid = UUID(uuidString: address),
-              let peripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first else {
-            return false
-        }
-        
-        self.peripheral = peripheral
-        peripheral.delegate = self
-        centralManager.connect(peripheral, options: nil)
-        return true  // Return immediately, connection status will be handled by delegate
-    }
-
+    // MARK: - Private Helpers
     private func updateTransferStats(_ newBytes: Int) {
         totalBytesReceived += newBytes
         
@@ -484,7 +548,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         
         lastDataReceived = Date()
     }
-
+    
     private func isKnownSerialService(_ uuid: CBUUID) -> SerialService? {
         return knownSerialServices.first { service in
             uuid.uuidString.lowercased() == service.uuid.lowercased()
@@ -504,108 +568,9 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return characteristic.properties.contains(.notify) ||
                characteristic.properties.contains(.indicate)
     }
-
-    public func connectToStoredDevice(_ uuid: String) -> Bool {
-        guard let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: uuid) else {
-            return false
-        }
-        
-        return DeviceConfiguration.openBLEDevice(
-            name: storedDevice.name,
-            deviceAddress: storedDevice.uuid
-        )
-    }
-
-    public func clearRetrievalState() {
-        logDebug("🧹 Clearing retrieval state")
-        DispatchQueue.main.async { [weak self] in
-            self?.isRetrievingLogs = false
-            self?.currentRetrievalDevice = nil
-        }
-    }
-
-    public func setBackgroundMode(_ enabled: Bool) {
-        if enabled {
-            // Set connection parameters for background operation
-            if let peripheral = peripheral {
-                // For iOS/macOS, we can only ensure the connection stays alive
-                // by maintaining the peripheral reference and keeping the central manager active
-                logInfo("Setting up background mode for peripheral: \(peripheral.identifier)")
-                
-                #if os(iOS)
-                // On iOS, we can request background execution time
-                var backgroundTask: UIBackgroundTaskIdentifier = .invalid
-                backgroundTask = UIApplication.shared.beginBackgroundTask { [backgroundTask] in
-                    // Cleanup callback
-                    if backgroundTask != .invalid {
-                        UIApplication.shared.endBackgroundTask(backgroundTask)
-                    }
-                }
-                
-                // Store the task identifier for later cleanup
-                currentBackgroundTask = backgroundTask
-                #endif
-            }
-        } else {
-            logInfo("Disabling background mode")
-            #if os(iOS)
-            // Clean up any background tasks when disabling background mode
-            if let peripheral = peripheral {
-                logInfo("Cleaning up background mode for peripheral: \(peripheral.identifier)")
-                if let task = currentBackgroundTask, task != .invalid {
-                    UIApplication.shared.endBackgroundTask(task)
-                    currentBackgroundTask = nil
-                }
-            }
-            #endif
-        }
-    }
-
-    // track background tasks
-    #if os(iOS)
-    private var currentBackgroundTask: UIBackgroundTaskIdentifier?
-    #endif
-
-    // Method to handle system-level disconnects
-    public func systemDisconnect(_ peripheral: CBPeripheral) {
-        logInfo("Performing system-level disconnect for \(peripheral.name ?? "Unknown Device")")
-        
-        // Clear state first
-        DispatchQueue.main.async {
-            self.isPeripheralReady = false
-            self.connectedDevice = nil
-            self.writeCharacteristic = nil
-            self.notifyCharacteristic = nil
-            self.peripheral = nil
-        }
-        
-        // Then cancel the connection
-        centralManager.cancelPeripheralConnection(peripheral)
-    }
-
-    public func clearDiscoveredPeripherals() {
-        DispatchQueue.main.async {
-            self.discoveredPeripherals.removeAll()
-        }
-    }
-    
-    public func addDiscoveredPeripheral(_ peripheral: CBPeripheral) {
-        DispatchQueue.main.async {
-            if !self.discoveredPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
-                self.discoveredPeripherals.append(peripheral)
-            }
-        }
-    }
-
-    public func queueOperation(_ operation: @escaping () -> Void) {
-        if isBluetoothReady {
-            operation()
-        } else {
-            pendingOperations.append(operation)
-        }
-    }
 }
 
+// MARK: - Extensions
 extension Data {
     func hexEncodedString() -> String {
         return map { String(format: "%02hhx", $0) }.joined()

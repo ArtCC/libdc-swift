@@ -117,7 +117,9 @@ import LibDCBridge
             if openStatus == DC_STATUS_SUCCESS {
                 logDebug("Successfully opened device using stored configuration")
                 logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
-                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                DispatchQueue.main.async {
+                    CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                }
                 return true
             }
             logDebug("Failed to open with stored config (status: \(openStatus)), falling back to identification")
@@ -135,7 +137,9 @@ import LibDCBridge
             if openStatus == DC_STATUS_SUCCESS {
                 logDebug("Successfully opened device with descriptor configuration")
                 logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
-                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                DispatchQueue.main.async {
+                    CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                }
                 return true
             }
         }
@@ -168,7 +172,9 @@ import LibDCBridge
         if openStatus == DC_STATUS_SUCCESS {
             logDebug("Successfully opened device with new configuration")
             logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
-            CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+            DispatchQueue.main.async {
+                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+            }
             return true
         } else {
             logError("Failed to open device: \(openStatus)")
@@ -192,13 +198,13 @@ import LibDCBridge
     /// - Parameter name: The device name to identify
     /// - Returns: A tuple containing the device family and model number, or nil if not identified
     static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
-        if let descriptor = findMatchingDescriptor(for: name) {
-            let family = dc_descriptor_get_type(descriptor)
-            let model = dc_descriptor_get_model(descriptor)
-            
-            if let deviceFamily = DeviceFamily(dcFamily: family) {
-                return (deviceFamily, model)
-            }
+        var descriptor: OpaquePointer?
+        var family: dc_family_t = DC_FAMILY_NULL
+        var model: UInt32 = 0
+        
+        let rc = find_matching_descriptor(&descriptor, family, model, name)
+        if rc == DC_STATUS_SUCCESS, let deviceFamily = DeviceFamily(dcFamily: family) {
+            return (deviceFamily, model)
         }
         return nil
     }
@@ -208,51 +214,17 @@ import LibDCBridge
     /// - Parameter name: The device name to get display name for
     /// - Returns: A formatted string containing the vendor and product name, or "Unknown Device" if not found
     public static func getDeviceDisplayName(from name: String) -> String {
-        if let descriptor = findMatchingDescriptor(for: name),
+        var descriptor: OpaquePointer?
+        var family: dc_family_t = DC_FAMILY_NULL
+        var model: UInt32 = 0
+        
+        let rc = find_matching_descriptor(&descriptor, family, model, name)
+        if rc == DC_STATUS_SUCCESS,
            let vendor = dc_descriptor_get_vendor(descriptor),
            let product = dc_descriptor_get_product(descriptor) {
             return "\(String(cString: vendor)) \(String(cString: product))"
         }
         return "Unknown Device"
-    }
-    
-    /// Helper function that encapsulates the common descriptor iteration logic.
-    /// Only considers BLE-capable devices.
-    /// - Parameter name: The device name to find a descriptor for
-    /// - Returns: A matching descriptor if found, nil otherwise
-    private static func findMatchingDescriptor(for name: String) -> OpaquePointer? {
-        var iterator: OpaquePointer?
-        guard dc_descriptor_iterator(&iterator) == DC_STATUS_SUCCESS else {
-            return nil
-        }
-        defer { dc_iterator_free(iterator) }
-        
-        let lowercaseName = name.lowercased()
-        var descriptor: OpaquePointer?
-        var matchingDescriptor: OpaquePointer?
-        
-        while dc_iterator_next(iterator, &descriptor) == DC_STATUS_SUCCESS {
-            defer {
-                if matchingDescriptor == nil {
-                    dc_descriptor_free(descriptor)
-                }
-            }
-            
-            let transports = dc_descriptor_get_transports(descriptor)
-            guard (transports & DC_TRANSPORT_BLE.rawValue) != 0 else { continue }
-            
-            guard let vendor = dc_descriptor_get_vendor(descriptor),
-                  let product = dc_descriptor_get_product(descriptor) else { continue }
-            
-            let vendorStr = String(cString: vendor).lowercased()
-            let productStr = String(cString: product).lowercased()
-            if lowercaseName.contains(vendorStr) || lowercaseName.contains(productStr) {
-                matchingDescriptor = descriptor
-                break
-            }
-        }
-        
-        return matchingDescriptor
     }
     
     /// Attempts to identify a device using libdivecomputer's built-in identification function.

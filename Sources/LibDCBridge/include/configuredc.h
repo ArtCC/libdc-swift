@@ -35,6 +35,8 @@ dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned 
 dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor);
 dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context, dc_family_t family, unsigned int model, const unsigned char *data, size_t size);
 device_data_t* get_device_data_pointer(void);
+dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor, 
+    dc_family_t family, unsigned int model, const char *name);
 
 #ifdef __cplusplus
 }

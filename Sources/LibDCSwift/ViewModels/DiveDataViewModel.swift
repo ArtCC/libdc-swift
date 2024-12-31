@@ -39,7 +39,7 @@ public class DiveDataViewModel: ObservableObject {
         objectWillChange.send() // Notify UI if needed
     }
     
-    public enum DownloadProgress: CustomStringConvertible {
+    public enum DownloadProgress: CustomStringConvertible, Equatable {
         case idle
         case inProgress(current: Int)
         case completed
@@ -58,6 +58,23 @@ public class DiveDataViewModel: ObservableObject {
                 return "Cancelled"
             case .error(let message):
                 return "Error: \(message)"
+            }
+        }
+        
+        public static func == (lhs: DownloadProgress, rhs: DownloadProgress) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle):
+                return true
+            case (.completed, .completed):
+                return true
+            case (.cancelled, .cancelled):
+                return true
+            case let (.inProgress(current1), .inProgress(current2)):
+                return current1 == current2
+            case let (.error(message1), .error(message2)):
+                return message1 == message2
+            default:
+                return false
             }
         }
     }

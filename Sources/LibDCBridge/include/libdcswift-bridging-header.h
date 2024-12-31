@@ -25,11 +25,11 @@ typedef int (*dc_dive_callback_t)(const unsigned char *data,
                                 void *userdata);
 
 // Descriptor functions
-dc_status_t dc_descriptor_iterator(dc_iterator_t **iterator);
 dc_family_t dc_descriptor_get_type(dc_descriptor_t *descriptor);
 unsigned int dc_descriptor_get_model(dc_descriptor_t *descriptor);
-dc_status_t dc_parser_new2(dc_parser_t **parser, dc_context_t *context, dc_descriptor_t *descriptor, const unsigned char *data, size_t size);
 dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context, dc_family_t family, unsigned int model, const unsigned char *data, size_t size);
+dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor, 
+    dc_family_t family, unsigned int model, const char *name);
 
 // Export Objective-C classes to Swift
 #if __has_feature(objc_modules)
