@@ -19,11 +19,73 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 ## Key Features
 
 ### Fingerprint Implementation
-- Stores fingerprint of most recent dive
-- Uses UserDefaults for persistence
-- Speeds up subsequent downloads
-- Set via dc_device_set_fingerprint()
-- Toggle in settings to enable/disable fingerprint usage
+
+The fingerprint system in libdivecomputer is used to identify previously downloaded dives and optimize subsequent downloads. The fingerprint represents the last downloaded dive's identifier, which is used to skip all dives up to that point in the next download. Here's how it works:
+
+1. Device-Side Implementation:
+   - Each dive computer stores a unique identifier (fingerprint) for each dive
+   - Fingerprints are used to identify specific dives on the device
+   - Format and size of fingerprints vary by device manufacturer
+
+2. Download Process:
+   - When starting a download, stored fingerprint is set via `dc_device_set_fingerprint()`
+   - Device uses this fingerprint to identify the last downloaded dive
+   - Only dives newer than the fingerprinted dive are downloaded
+   - Each downloaded dive provides its own fingerprint via callback
+
+3. Storage Flow:
+   - Persistent Storage:
+     * Fingerprints are stored with device type and serial number in UserDefaults
+     * Kept until explicitly cleared or device is forgotten
+     * Used to maintain download history across app sessions
+   - Temporary Storage:
+     * Stored in device_data_t during download operation
+     * Cleaned up when device connection closes
+     * Used for active download session only
+
+4. Implementation Details:
+   - Fingerprints stored in device_data_t structure
+   - Set during device info event in configuredc.c
+   - Updated during dive enumeration callback
+   - Persisted via DiveDataViewModel for future sessions
+
+5. Memory Management:
+   - Temporary fingerprint data allocated in device_data_t
+   - Freed when device connection closes
+   - Persistent copy maintained in UserDefaults
+   - Safe copying between C and Swift layers
+
+6. Key Functions:
+   - dc_device_set_fingerprint(): Sets fingerprint on device
+   - setup_device_events(): Configures event handling
+   - event_cb(): Handles device events including fingerprint
+   - diveCallbackClosure: Processes new fingerprints
+
+7. Benefits:
+   - Significantly reduces download time
+   - Prevents duplicate dive downloads
+   - Maintains download continuity
+   - Device-specific optimization
+
+8. Limitations:
+   - Requires persistent storage
+   - Device-specific implementation
+   - Must handle first-time downloads
+   - Needs proper error handling
+
+### Important Steps for Fingerprinting
+1. Register event handler first
+2. Let it receive device info and set fingerprint
+3. Then start enumeration
+
+### Fingerprint Mechanism for Suunto Devices
+1. Dives are enumerated newest to oldest (Dive 1 is newest)
+2. Store fingerprint from newest dive (Dive 1) during first download
+3. On next download:
+   - Set stored fingerprint during device info event
+   - Device should skip all dives up to that fingerprint
+   - Only download dives newer than stored fingerprint
+4. Update stored fingerprint with newest dive's fingerprint
 
 ### Device Management
 - Stores connected device information
@@ -180,3 +242,77 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
    - Improved device categorization
    - More detailed device information
    - Better storage management
+
+## Dive Log Download Flow
+
+### Download Sequence
+1. **Initial Call**: `retrieveDiveLogs()` is called from the UI
+   - Sets up the device context and callbacks
+   - Registers event handler with `dc_device_set_events()`
+   - Sets up fingerprint lookup function
+   - Calls `dc_device_foreach()` to start enumeration
+
+2. **Device Info Event**:
+   - When device connects, `DC_EVENT_DEVINFO` is triggered
+   - Event callback (`event_cb`) in configuredc.c receives device info
+   - Callback gets serial number and model info
+   - If fingerprint lookup is configured, it calls the Swift lookup function
+   - If fingerprint found, sets it with `dc_device_set_fingerprint()`
+
+3. **Dive Enumeration**:
+   - After device info, `dc_device_foreach()` starts enumerating dives
+   - For each dive, calls `diveCallbackClosure` in Swift
+   - Callback receives dive data and fingerprint
+   - If fingerprint matches stored one, stops enumeration
+   - Otherwise processes dive data and continues
+
+4. **Dive Processing**:
+   - Each dive is parsed using `GenericParser`
+   - Parsed data is added to view model
+   - Progress is updated
+   - New fingerprint is stored for next time
+
+### Callback Chain
+UI Action -> retrieveDiveLogs() -> dc_device_set_events() -> Registers event_cb -> dc_device_foreach() -> Starts enumeration -> event_cb (DC_EVENT_DEVINFO) -> Gets device info
+-> fingerprintLookup() -> Checks stored fingerprint -> dc_device_set_fingerprint() -> Sets fingerprint on device -> diveCallbackClosure -> Processes each dive -> Parsing & Storage -> Updates UI
+
+### Key Components
+1. **event_cb (C callback)**:
+   - Handles device events (info, progress)
+   - Sets up fingerprint checking
+   - First callback in the chain
+
+2. **fingerprintLookup (Swift callback)**:
+   - Called by event_cb when device info received
+   - Checks stored fingerprints
+   - Returns fingerprint data if found
+
+3. **diveCallbackClosure (Swift callback)**:
+   - Called for each dive during enumeration
+   - Checks if dive matches stored fingerprint
+   - Processes dive data if new
+
+### Important Notes
+- Callbacks are asynchronous
+- Device info must be received before fingerprint can be set
+- Fingerprint checking happens at two points:
+  1. During device info event (to set device fingerprint)
+  2. During dive enumeration (to check each dive)
+- Progress updates happen during enumeration
+- Background task warnings appear after 30 seconds
+
+First Download:
+1. Start enumeration
+2. First dive (newest) -> store fingerprint in context.lastFingerprint
+3. Continue processing remaining dives
+4. Enumeration completes
+5. Save context.lastFingerprint as the stored fingerprint
+
+Next Download:
+1. Get device info
+2. Set stored fingerprint on device
+3. Start enumeration
+4. First dive (newest) -> store fingerprint in context.lastFingerprint
+5. Continue until matching fingerprint found
+6. Enumeration completes
+7. Save context.lastFingerprint as new stored fingerprint

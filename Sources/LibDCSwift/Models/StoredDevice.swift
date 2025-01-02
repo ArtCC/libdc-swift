@@ -135,4 +135,9 @@ public class StoredDevice: Codable {
            return nil
        }
    }
+   
+   public func updateStoredDevices(_ devices: [StoredDevice]) {
+       storedDevices = devices
+       saveDevices()
+   }
 } 

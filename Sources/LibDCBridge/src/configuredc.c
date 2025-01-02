@@ -13,8 +13,8 @@
  * BLE stream structures
  *------------------------------------------------------------------*/
 typedef struct ble_stream_t {
-    dc_iostream_t base;       // The underlying iostream object
-    ble_object_t *ble_object; // Our pointer to the BLE object
+    dc_iostream_t base;      
+    ble_object_t *ble_object; 
 } ble_stream_t;
 
 /*--------------------------------------------------------------------
@@ -211,7 +211,7 @@ dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, con
 }
 
 /*--------------------------------------------------------------------
- * Event callback function for device events
+ * Event callback wrapper
  * 
  * @param device:   The dive computer device
  * @param event:    Type of event received
@@ -229,6 +229,28 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
             const dc_event_devinfo_t *devinfo = (const dc_event_devinfo_t *)data;
             devdata->devinfo = *devinfo;
             devdata->have_devinfo = 1;
+            
+            // Look up fingerprint using callback if available
+            if (devdata->lookup_fingerprint && devdata->model) {
+                char serial[16];
+                snprintf(serial, sizeof(serial), "%08x", devinfo->serial);
+                
+                size_t fsize = 0;
+                unsigned char *fingerprint = devdata->lookup_fingerprint(
+                    devdata->fingerprint_context,
+                    devdata->model,
+                    serial,
+                    &fsize
+                );
+                
+                if (fingerprint && fsize > 0) {
+                    dc_device_set_fingerprint(device, fingerprint, fsize);
+                    devdata->fingerprint = fingerprint;
+                    devdata->fsize = fsize;
+                } else {
+                    printf("No fingerprint found\n");
+                }
+            }
         }
         break;
     case DC_EVENT_PROGRESS:
@@ -236,13 +258,6 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
             const dc_event_progress_t *progress = (const dc_event_progress_t *)data;
             devdata->progress = *progress;
             devdata->have_progress = 1;
-        }
-        break;
-    case DC_EVENT_CLOCK:
-        {
-            const dc_event_clock_t *clock = (const dc_event_clock_t *)data;
-            devdata->clock = *clock;
-            devdata->have_clock = 1;
         }
         break;
     default:
@@ -259,6 +274,17 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
 static void close_device_data(device_data_t *data) {
     if (!data) return;
             
+    if (data->fingerprint) {
+        free(data->fingerprint);
+        data->fingerprint = NULL;
+        data->fsize = 0;
+    }
+    
+    if (data->model) {
+        free((void*)data->model);
+        data->model = NULL;
+    }
+    
     if (data->device) {
         dc_device_close(data->device);
         data->device = NULL;
@@ -327,10 +353,25 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
         return rc;
     }
 
-    // Store the descriptor (without reference counting)
+    // Store the descriptor
     data->descriptor = descriptor;
 
-    return rc;
+    // Store model string from descriptor
+    if (descriptor) {
+        const char *vendor = dc_descriptor_get_vendor(descriptor);
+        const char *product = dc_descriptor_get_product(descriptor);
+        if (vendor && product) {
+            // Allocate space for "Vendor Product"
+            size_t len = strlen(vendor) + strlen(product) + 2;  // +2 for space and null terminator
+            char *full_name = malloc(len);
+            if (full_name) {
+                snprintf(full_name, len, "%s %s", vendor, product);
+                data->model = full_name;  // Store full name
+            }
+        }
+    }
+
+    return DC_STATUS_SUCCESS;
 }
 
 /*--------------------------------------------------------------------

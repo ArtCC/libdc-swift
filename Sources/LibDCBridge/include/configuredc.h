@@ -19,14 +19,24 @@ typedef struct {
     dc_iostream_t *iostream;
     dc_descriptor_t *descriptor;
     
+    // device info
     int have_devinfo;
     dc_event_devinfo_t devinfo;
-    
     int have_progress;
     dc_event_progress_t progress;
-    
     int have_clock;
     dc_event_clock_t clock;
+    
+    // fingerprints
+    unsigned char *fingerprint;  
+    unsigned int fsize;         
+    void *fingerprint_context;  // Context to pass to lookup function
+    unsigned char *(*lookup_fingerprint)(void *context, const char *device_type, const char *serial, size_t *size);
+    
+    // device identification
+    const char *model;     // Model string (from descriptor)
+    uint32_t fdeviceid;   // Device ID associated with fingerprint
+    uint32_t fdiveid;     // Dive ID associated with fingerprint
 } device_data_t;
 
 dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata);
