@@ -43,8 +43,9 @@ let package = Package(
                 .headerSearchPath("../../libdivecomputer/include"),
                 .headerSearchPath("../../libdivecomputer/src")
             ],
-            swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "include/libdcswift-bridging-header.h"])
+            linkerSettings: [
+                .linkedFramework("CoreBluetooth"),
+                .linkedFramework("Foundation")
             ]
         ),
         .target(
@@ -63,8 +64,15 @@ let package = Package(
                 "Parser/GenericParser.swift",
                 "DiveLogRetriever.swift"
             ],
+            cSettings: [
+                .headerSearchPath("../LibDCBridge/include")
+            ],
             swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "../LibDCBridge/include/libdcswift-bridging-header.h"])
+                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
+            ],
+            linkerSettings: [
+                .linkedFramework("CoreBluetooth"),
+                .linkedFramework("Foundation")
             ]
         )
     ]
