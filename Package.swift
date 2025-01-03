@@ -28,7 +28,9 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include/libdivecomputer"),
-                .headerSearchPath("src")
+                .headerSearchPath("src"),
+                .define("HAVE_PTHREAD_H"),
+                .define("HAVE_CONFIG_H")
             ]
         ),
         .target(
@@ -55,6 +57,7 @@ let package = Package(
                 "Models/DiveData.swift",
                 "Models/StoredDevice.swift",
                 "Models/SampleData.swift",
+                "Models/DeviceFingerprint.swift",
                 "ViewModels/DiveDataViewModel.swift",
                 "Parser/GenericParser.swift",
                 "DiveLogRetriever.swift"

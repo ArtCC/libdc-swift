@@ -69,7 +69,7 @@ public class DiveLogRetriever {
         let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
         if context.logCount == 1 { // Given that first dive is the newest
             context.lastFingerprint = fingerprintData
-            logInfo("📍 Stored fingerprint from newest dive: \(fingerprintData.hexString)")
+            logInfo("📍 New fingerprint from latest dive: \(fingerprintData.hexString)")
         }
         
         // Check fingerprint only if we have one stored
@@ -234,7 +234,7 @@ public class DiveLogRetriever {
                                 deviceType: context.deviceName,
                                 serial: deviceSerial
                             )
-                            logInfo("💾 Saved new fingerprint: \(lastFingerprint.hexString)")
+                            logInfo("💾 Updated fingerprint in persistent storage")
                             viewModel.progress = .completed
                             completion(true)
                         }

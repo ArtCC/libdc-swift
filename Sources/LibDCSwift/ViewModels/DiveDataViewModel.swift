@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import LibDCSwift
 
 /// View model for managing dive data and device fingerprints.
 /// Handles storage, retrieval, and state management for dive logs and device identification.
@@ -85,24 +86,10 @@ public class DiveDataViewModel: ObservableObject {
     ///   - serial: Serial number of the device
     /// - Returns: Stored fingerprint data if found, nil otherwise
     public func getFingerprint(forDeviceType deviceType: String, serial: String) -> Data? {
-        let fingerprints = loadStoredFingerprints()
-        let normalizedType = normalizeDeviceType(deviceType)
-        let matches = fingerprints.filter { 
-            normalizeDeviceType($0.deviceType) == normalizedType && 
-            $0.serial == serial 
-        }
-        
-        let found = matches
-            .filter { !$0.fingerprint.isEmpty }
-            .sorted { $0.timestamp > $1.timestamp }
-            .first
-        
-        // Only log if fingerprint is found or not
-        if found != nil {
-            logInfo("✅ Found stored fingerprint")
-        }
-        
-        return found?.fingerprint
+        DeviceFingerprintStorage.shared.getFingerprint(
+            forDeviceType: deviceType, 
+            serial: serial
+        )?.fingerprint
     }
     
     /// Saves a new fingerprint for a device
@@ -116,29 +103,12 @@ public class DiveDataViewModel: ObservableObject {
             return
         }
         
-        let normalizedType = normalizeDeviceType(deviceType)
-        logInfo("💾 Saving fingerprint for \(normalizedType) (\(serial))")
-        
-        var fingerprints = loadStoredFingerprints()
-        
-        // Use normalized type for comparison
-        fingerprints.removeAll { 
-            normalizeDeviceType($0.deviceType) == normalizedType && 
-            $0.serial == serial 
-        }
-        
-        let newFingerprint = StoredFingerprint(
+        DeviceFingerprintStorage.shared.saveFingerprint(
+            fingerprint,
             deviceType: deviceType,
-            serial: serial,
-            fingerprint: fingerprint,
-            timestamp: Date()
+            serial: serial
         )
-        
-        fingerprints.append(newFingerprint)
-        saveStoredFingerprints(fingerprints)
-        objectWillChange.send() 
-        
-        logInfo("✅ Fingerprint saved successfully")
+        objectWillChange.send()
     }
     
     /// Clears the stored fingerprint for a specific device
@@ -146,28 +116,24 @@ public class DiveDataViewModel: ObservableObject {
     ///   - deviceType: Type/model of the device
     ///   - serial: Serial number of the device
     public func clearFingerprint(forDeviceType deviceType: String, serial: String) {
-        var fingerprints = loadStoredFingerprints()
-        let normalizedType = normalizeDeviceType(deviceType)
-        fingerprints.removeAll { 
-            normalizeDeviceType($0.deviceType) == normalizedType && 
-            $0.serial == serial 
-        }
-        saveStoredFingerprints(fingerprints)
-        objectWillChange.send() 
+        DeviceFingerprintStorage.shared.clearFingerprint(
+            forDeviceType: deviceType,
+            serial: serial
+        )
+        objectWillChange.send()
     }
     
     /// Removes all stored fingerprints from persistent storage
     public func clearAllFingerprints() {
-        UserDefaults.standard.removeObject(forKey: fingerprintKey)
+        DeviceFingerprintStorage.shared.clearAllFingerprints()
         objectWillChange.send()
-        logInfo("🗑️ Cleared all fingerprints")
     }
     
     public func getFingerprintInfo(forDeviceType type: String, serial: String) -> Date? {
-        let fingerprints = loadStoredFingerprints()
-        return fingerprints.first { 
-            $0.deviceType == type && $0.serial == serial 
-        }?.timestamp
+        DeviceFingerprintStorage.shared.getFingerprint(
+            forDeviceType: type,
+            serial: serial
+        )?.timestamp
     }
     
     public enum DownloadProgress: Equatable {
