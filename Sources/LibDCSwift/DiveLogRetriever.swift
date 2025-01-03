@@ -67,7 +67,7 @@ public class DiveLogRetriever {
         }
         
         let fingerprintData = Data(bytes: fingerprint, count: Int(fsize))
-        if context.logCount == 1 {
+        if context.logCount == 1 { // Given that first dive is the newest
             context.lastFingerprint = fingerprintData
             logInfo("📍 Stored fingerprint from newest dive: \(fingerprintData.hexString)")
         }

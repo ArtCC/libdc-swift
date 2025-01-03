@@ -20,13 +20,15 @@ class SerialService: NSObject {
     }
 }
 
+/// Extension to check if a CBUUID is a standard Bluetooth service UUID
 extension CBUUID {
     var isStandardBluetooth: Bool {
         return self.data.count == 2
     }
 }
 
-/// Central manager for handling BLE communications with dive computers
+/// Central manager for handling BLE communications with dive computers.
+/// Manages device discovery, connection, and data transfer with BLE dive computers.
 @objc(CoreBluetoothManager)
 public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Singleton
@@ -60,14 +62,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     private var receivedData: Data = Data()
     private let queue = DispatchQueue(label: "com.blemanager.queue")
     private let frameMarker: UInt8 = 0x7E
-    private var _deviceDataPtr: UnsafeMutablePointer<device_data_t>? // Device data pointer for libdivecomputer integration
+    private var _deviceDataPtr: UnsafeMutablePointer<device_data_t>?
     private var connectionCompletion: ((Bool) -> Void)?
     private var totalBytesReceived: Int = 0
     private var lastDataReceived: Date?
     private var averageTransferRate: Double = 0
     private var preferredService: CBService?
     private var pendingOperations: [() -> Void] = []
-
+    
     // MARK: - Public Properties
     public var openedDeviceDataPtr: UnsafeMutablePointer<device_data_t>? { // Public access to device data pointer with change notification
         get {
@@ -80,11 +82,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         }
     }
     
+    /// Checks if there is a valid device data pointer
+    /// - Returns: True if device data pointer exists
     public func hasValidDeviceDataPtr() -> Bool {
         return openedDeviceDataPtr != nil
     }
     
-    // MARK: - Serial Services 
+    // MARK: - Serial Services
+    /// Known BLE serial services for supported dive computers
     @objc private let knownSerialServices: [SerialService] = [
         SerialService(uuid: "0000fefb-0000-1000-8000-00805f9b34fb", vendor: "Heinrichs-Weikamp", product: "Telit/Stollmann"),
         SerialService(uuid: "2456e1b9-26e2-8f83-e744-f34f01e9d701", vendor: "Heinrichs-Weikamp", product: "U-Blox"),
@@ -97,6 +102,8 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         SerialService(uuid: "fe25c237-0ece-443c-b0aa-e02033e7029d", vendor: "Shearwater", product: "Perdix/Teric"),
         SerialService(uuid: "0000fcef-0000-1000-8000-00805f9b34fb", vendor: "Divesoft", product: "Freedom")
     ]
+    
+    /// Service UUIDs to exclude from discovery
     private let excludedServices: Set<String> = [
         "00001530-1212-efde-1523-785feabcd123", // Nordic Upgrade
         "9e5d1e47-5c13-43a0-8635-82ad38a1386f", // Broadcom Upgrade #1
@@ -314,8 +321,6 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
 
     public func systemDisconnect(_ peripheral: CBPeripheral) {
         logInfo("Performing system-level disconnect for \(peripheral.name ?? "Unknown Device")")
-        
-        // Clear state first
         DispatchQueue.main.async {
             self.isPeripheralReady = false
             self.connectedDevice = nil
@@ -323,8 +328,6 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             self.notifyCharacteristic = nil
             self.peripheral = nil
         }
-        
-        // Then cancel the connection
         centralManager.cancelPeripheralConnection(peripheral)
     }
     

@@ -1,15 +1,18 @@
 import Foundation
 import Combine
 
+/// View model for managing dive data and device fingerprints.
+/// Handles storage, retrieval, and state management for dive logs and device identification.
 public class DiveDataViewModel: ObservableObject {
     @Published public var dives: [DiveData] = []
     @Published public var status: String = ""
     @Published public var progress: DownloadProgress = .idle
     @Published public var hasNewDives: Bool = false
     
-    // Key format: "fingerprint_{deviceType}_{serial}"
+    /// Key format: "fingerprint_{deviceType}_{serial}"
     private let fingerprintKeyPrefix = "fingerprint_"
     
+    /// Represents a stored device fingerprint with associated metadata
     private struct StoredFingerprint: Codable {
         let deviceType: String
         let serial: String
@@ -21,6 +24,8 @@ public class DiveDataViewModel: ObservableObject {
     
     public init() {}
     
+    /// Loads all stored device fingerprints from persistent storage
+    /// - Returns: Array of StoredFingerprint objects, or empty array if none found
     private func loadStoredFingerprints() -> [StoredFingerprint] {
         guard let data = UserDefaults.standard.data(forKey: fingerprintKey),
               let fingerprints = try? JSONDecoder().decode([StoredFingerprint].self, from: data) else {
@@ -29,12 +34,18 @@ public class DiveDataViewModel: ObservableObject {
         return fingerprints
     }
     
+    /// Saves fingerprints to persistent storage
+    /// - Parameter fingerprints: Array of StoredFingerprint objects to save
     private func saveStoredFingerprints(_ fingerprints: [StoredFingerprint]) {
         if let data = try? JSONEncoder().encode(fingerprints) {
             UserDefaults.standard.set(data, forKey: fingerprintKey)
         }
     }
     
+    /// Normalizes a device type string for consistent comparison
+    /// Uses libdivecomputer's descriptor system when possible, falls back to string parsing
+    /// - Parameter deviceType: The device type string to normalize
+    /// - Returns: Normalized device type string
     private func normalizeDeviceType(_ deviceType: String) -> String {
         // Try to find matching descriptor from libdivecomputer
         var descriptor: OpaquePointer?
@@ -56,24 +67,23 @@ public class DiveDataViewModel: ObservableObject {
         
         // If no match found, fall back to basic string parsing
         let components = deviceType.split(separator: " ")
-        
-        // If single component, return as is
         if components.count == 1 {
             return String(components[0])
         }
         
         // Remove any serial numbers or identifiers (typically numeric)
         let nonNumericComponents = components.filter { !$0.allSatisfy { $0.isNumber } }
-        
-        // Take the last non-numeric component as the model name
         if let modelName = nonNumericComponents.last {
             return String(modelName)
         }
-        
-        // Fallback to original string if all else fails
         return deviceType
     }
     
+    /// Retrieves stored fingerprint for a specific device
+    /// - Parameters:
+    ///   - deviceType: Type/model of the device
+    ///   - serial: Serial number of the device
+    /// - Returns: Stored fingerprint data if found, nil otherwise
     public func getFingerprint(forDeviceType deviceType: String, serial: String) -> Data? {
         let fingerprints = loadStoredFingerprints()
         let normalizedType = normalizeDeviceType(deviceType)
@@ -95,6 +105,11 @@ public class DiveDataViewModel: ObservableObject {
         return found?.fingerprint
     }
     
+    /// Saves a new fingerprint for a device
+    /// - Parameters:
+    ///   - fingerprint: The fingerprint data to save
+    ///   - deviceType: Type/model of the device
+    ///   - serial: Serial number of the device
     public func saveFingerprint(_ fingerprint: Data, deviceType: String, serial: String) {
         guard !fingerprint.isEmpty else {
             logWarning("⚠️ Attempted to save empty fingerprint - ignoring")
@@ -126,6 +141,10 @@ public class DiveDataViewModel: ObservableObject {
         logInfo("✅ Fingerprint saved successfully")
     }
     
+    /// Clears the stored fingerprint for a specific device
+    /// - Parameters:
+    ///   - deviceType: Type/model of the device
+    ///   - serial: Serial number of the device
     public func clearFingerprint(forDeviceType deviceType: String, serial: String) {
         var fingerprints = loadStoredFingerprints()
         let normalizedType = normalizeDeviceType(deviceType)
@@ -137,6 +156,7 @@ public class DiveDataViewModel: ObservableObject {
         objectWillChange.send() 
     }
     
+    /// Removes all stored fingerprints from persistent storage
     public func clearAllFingerprints() {
         UserDefaults.standard.removeObject(forKey: fingerprintKey)
         objectWillChange.send()
