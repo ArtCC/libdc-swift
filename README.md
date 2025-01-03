@@ -23,7 +23,7 @@ Add LibDC-Swift to your project using Swift Package Manager:
 
 ```swift
 dependencies: [
-    .package(url: "latishab/LibDC-Swift.git", from: "1.0.0")
+    .package(url: "https://github.com/latishab/libdc-swift", from: "1.0.0")
 ]
 ```
 
@@ -57,17 +57,7 @@ DiveLogRetriever.retrieveDiveLogs(
 
 ## Supported Devices
 
-### Suunto
-- EON Steel / Black
-- EON Core
-- D5
-
-### Shearwater
-- Petrel / Petrel 2 / Petrel 3
-- Perdix / Perdix AI
-- NERD / NERD 2
-- Teric
-- Peregrine
+All dive computer brands that supports BLE connectivity according to [libdivecomputer](https://www.libdivecomputer.org)
 
 ## Documentation
 
