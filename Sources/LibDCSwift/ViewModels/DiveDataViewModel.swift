@@ -2,6 +2,13 @@ import Foundation
 import Combine
 import LibDCSwift
 
+/// Protocol for implementing persistence of dive data
+public protocol DiveDataPersistence: AnyObject {
+    func saveDives(_ dives: [DiveData], forDevice deviceId: UUID)
+    func loadDives(forDevice deviceId: UUID) -> [DiveData]
+    func clearDives(forDevice deviceId: UUID)
+}
+
 /// View model for managing dive data and device fingerprints.
 /// Handles storage, retrieval, and state management for dive logs and device identification.
 public class DiveDataViewModel: ObservableObject {
@@ -23,7 +30,18 @@ public class DiveDataViewModel: ObservableObject {
     
     private let fingerprintKey = "DeviceFingerprints"
     
-    public init() {}
+    private static weak var activeInstance: DiveDataViewModel?
+    public weak var persistence: DiveDataPersistence?
+    
+    public init() {
+        DiveDataViewModel.activeInstance = self
+    }
+    
+    /// Returns the currently active download instance if one exists
+    /// - Returns: Active DiveDataViewModel instance or nil if no active download
+    public static func getActiveDownloadInstance() -> DiveDataViewModel? {
+        return activeInstance
+    }
     
     /// Loads all stored device fingerprints from persistent storage
     /// - Returns: Array of StoredFingerprint objects, or empty array if none found

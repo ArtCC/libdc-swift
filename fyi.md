@@ -6,7 +6,7 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 
 ### Core Components
 - **BLEManager.swift**: Handles BLE communication and device management
-- **DiveDataViewModel.swift**: Manages dive data and state
+- **DiveDataViewModel.swift**: Manages dive data and state, includes active download state management
 
 ### Protocol Implementation
 - **configuredc.c**: Bridge between Swift and libdivecomputer
@@ -43,11 +43,12 @@ The fingerprint system in libdivecomputer is used to identify previously downloa
 ## Dive Log Download Flow
 
 ### Download Sequence
-1. **Initial Call**: `retrieveDiveLogs()` is called from the UI
+1. **Initial Call**: `retrieveDiveLogs()` is called from ConnectedDeviceView
    - Sets up the device context and callbacks
    - Registers event handler with `dc_device_set_events()`
    - Sets up fingerprint lookup function
    - Calls `dc_device_foreach()` to start enumeration
+   - Stores active download state for UI restoration
 
 2. **Device Info Event**:
    - When device connects, `DC_EVENT_DEVINFO` is triggered
