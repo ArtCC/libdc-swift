@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "libdivecomputer/common.h"
 #include "libdivecomputer/iostream.h"
 #include "libdivecomputer/custom.h"

@@ -2,6 +2,7 @@
 #define CONFIGUREDC_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <libdivecomputer/common.h>
 #include <libdivecomputer/iostream.h>
 #include <libdivecomputer/context.h>

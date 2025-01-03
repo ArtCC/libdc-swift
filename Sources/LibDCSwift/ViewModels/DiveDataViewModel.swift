@@ -29,7 +29,6 @@ public class DiveDataViewModel: ObservableObject {
     }
     
     private let fingerprintKey = "DeviceFingerprints"
-    
     private static weak var activeInstance: DiveDataViewModel?
     public weak var persistence: DiveDataPersistence?
     
