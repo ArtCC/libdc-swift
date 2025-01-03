@@ -42,6 +42,9 @@ let package = Package(
                 .headerSearchPath("include"),
                 .headerSearchPath("../../libdivecomputer/include"),
                 .headerSearchPath("../../libdivecomputer/src")
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-import-objc-header", "include/libdcswift-bridging-header.h"])
             ]
         ),
         .target(
@@ -61,7 +64,7 @@ let package = Package(
                 "DiveLogRetriever.swift"
             ],
             swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
+                .unsafeFlags(["-import-objc-header", "../LibDCBridge/include/libdcswift-bridging-header.h"])
             ]
         )
     ]
