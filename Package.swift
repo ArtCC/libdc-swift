@@ -29,8 +29,7 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("include/libdivecomputer"),
                 .headerSearchPath("src"),
-                .define("HAVE_PTHREAD_H"),
-                .define("HAVE_CONFIG_H")
+                .define("HAVE_PTHREAD_H")
             ]
         ),
         .target(
@@ -42,8 +41,7 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("include"),
                 .headerSearchPath("../../libdivecomputer/include"),
-                .headerSearchPath("../../libdivecomputer/src"),
-                .define("HAVE_CONFIG_H")
+                .headerSearchPath("../../libdivecomputer/src")
             ]
         ),
         .target(
