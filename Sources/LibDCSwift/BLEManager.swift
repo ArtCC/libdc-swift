@@ -114,7 +114,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         guard let peripheral = self.peripheral else { return false }
         peripheral.discoverServices(nil)
         while writeCharacteristic == nil || notifyCharacteristic == nil {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
         
         return writeCharacteristic != nil && notifyCharacteristic != nil
@@ -125,7 +125,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
               let peripheral = self.peripheral else { return false }
         peripheral.setNotifyValue(true, for: notifyCharacteristic)
         while !notifyCharacteristic.isNotifying {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
         
         return notifyCharacteristic.isNotifying
@@ -165,7 +165,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     
     @objc public func readDataPartial(_ requested: Int) -> Data? {
         let startTime = Date()
-        let partialTimeout: TimeInterval = 1.0
+        let partialTimeout: TimeInterval = 0.5
         
         while true {
             var outData: Data?
@@ -184,7 +184,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             if Date().timeIntervalSince(startTime) > partialTimeout {
                 return nil
             }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.005))
         }
     }
     
@@ -223,7 +223,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             centralManager.cancelPeripheralConnection(peripheral)
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.isDisconnecting = false
         }
     }

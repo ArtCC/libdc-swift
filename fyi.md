@@ -316,3 +316,48 @@ Next Download:
 5. Continue until matching fingerprint found
 6. Enumeration completes
 7. Save context.lastFingerprint as new stored fingerprint
+
+### Fingerprint System and Download Behavior
+
+The fingerprint system works by storing the identifier of the newest dive during download. Here's how it handles different scenarios:
+
+1. **Normal Download Flow**:
+   - Dives are enumerated newest to oldest (Dive 1 is newest)
+   - First dive's fingerprint is stored automatically
+   - Used as reference point for next download
+
+2. **Edge Cases**:
+
+   a. **Toggle After Download**:
+   - Toggle should be automatically ON after successful download
+   - No manual enabling needed - fingerprint is already set
+   - User can only disable to force full download next time
+
+   b. **Toggle During Download**:
+   - Toggle state cannot be changed during active download
+   - Download must complete or be cancelled first
+   - Prevents inconsistent fingerprint state
+
+   c. **Toggle Before Download**:
+   - Toggle should be disabled (grayed out)
+   - Only enabled automatically after first successful download
+   - Prevents invalid fingerprint states
+
+   d. **Interrupted Downloads**:
+   - If download is interrupted (crash/disconnect):
+     * No fingerprint is saved
+     * Next download starts fresh
+     * Must complete a full download to set fingerprint
+   - Ensures data consistency
+
+3. **Best Practices**:
+   - Fingerprint is always set automatically
+   - Users can only disable, not enable manually
+   - Toggle reflects fingerprint existence
+   - Clear UI feedback about automatic nature
+
+4. **Recovery Behavior**:
+   - Failed download: No fingerprint saved
+   - Partial download: No fingerprint saved
+   - Successful download: Fingerprint saved automatically
+   - Manual clear: Forces full download next time

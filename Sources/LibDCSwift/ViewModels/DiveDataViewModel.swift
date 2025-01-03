@@ -76,14 +76,7 @@ public class DiveDataViewModel: ObservableObject {
     
     public func getFingerprint(forDeviceType deviceType: String, serial: String) -> Data? {
         let fingerprints = loadStoredFingerprints()
-        logInfo("🔍 Looking up fingerprint - stored count: \(fingerprints.count)")
-        
         let normalizedType = normalizeDeviceType(deviceType)
-        for fp in fingerprints {
-            let storedType = normalizeDeviceType(fp.deviceType)
-            logInfo("📍 Stored: type='\(fp.deviceType)' normalized='\(storedType)' serial='\(fp.serial)' size=\(fp.fingerprint.count)")
-        }
-        
         let matches = fingerprints.filter { 
             normalizeDeviceType($0.deviceType) == normalizedType && 
             $0.serial == serial 
@@ -94,10 +87,9 @@ public class DiveDataViewModel: ObservableObject {
             .sorted { $0.timestamp > $1.timestamp }
             .first
         
-        if let found = found {
-            logInfo("✅ Found matching fingerprint: size=\(found.fingerprint.count)")
-        } else {
-            logInfo("❌ No matching fingerprint found for type='\(deviceType)' normalized='\(normalizedType)' serial='\(serial)'")
+        // Only log if fingerprint is found or not
+        if found != nil {
+            logInfo("✅ Found stored fingerprint")
         }
         
         return found?.fingerprint
@@ -110,7 +102,7 @@ public class DiveDataViewModel: ObservableObject {
         }
         
         let normalizedType = normalizeDeviceType(deviceType)
-        logInfo("💾 Saving fingerprint - type='\(deviceType)' normalized='\(normalizedType)' serial='\(serial)' size=\(fingerprint.count)")
+        logInfo("💾 Saving fingerprint for \(normalizedType) (\(serial))")
         
         var fingerprints = loadStoredFingerprints()
         
@@ -126,6 +118,7 @@ public class DiveDataViewModel: ObservableObject {
             fingerprint: fingerprint,
             timestamp: Date()
         )
+        
         fingerprints.append(newFingerprint)
         saveStoredFingerprints(fingerprints)
         objectWillChange.send() 
@@ -133,18 +126,15 @@ public class DiveDataViewModel: ObservableObject {
         logInfo("✅ Fingerprint saved successfully")
     }
     
-    public func clearFingerprint(forDeviceType type: String, serial: String) {
+    public func clearFingerprint(forDeviceType deviceType: String, serial: String) {
         var fingerprints = loadStoredFingerprints()
-        let normalizedType = normalizeDeviceType(type)
-        
-        // Use normalized type for comparison
+        let normalizedType = normalizeDeviceType(deviceType)
         fingerprints.removeAll { 
             normalizeDeviceType($0.deviceType) == normalizedType && 
             $0.serial == serial 
         }
         saveStoredFingerprints(fingerprints)
         objectWillChange.send() 
-        logInfo("🗑️ Cleared fingerprint for \(type) (\(serial))")
     }
     
     public func clearAllFingerprints() {
@@ -160,23 +150,26 @@ public class DiveDataViewModel: ObservableObject {
         }?.timestamp
     }
     
-    public enum DownloadProgress: CustomStringConvertible, Equatable {
+    public enum DownloadProgress: Equatable {
         case idle
         case inProgress(current: Int)
         case completed
-        case cancelled
+        case noNewDives
         case error(String)
+        case cancelled
         
         public var description: String {
             switch self {
             case .idle:
-                return "Ready"
-            case .inProgress:
-                return ""
+                return "Ready to download"
+            case .inProgress(let current):
+                return "Downloading Dive #\(current)"
             case .completed:
-                return "Completed"
+                return "Download complete"
+            case .noNewDives:
+                return "No new dives to download"
             case .cancelled:
-                return "Cancelled"
+                return "Download cancelled"
             case .error(let message):
                 return "Error: \(message)"
             }
@@ -266,10 +259,7 @@ public class DiveDataViewModel: ObservableObject {
         DispatchQueue.main.async {
             self.dives.removeAll()
             self.hasNewDives = false
-            if case .idle = self.progress {
-                self.status = ""
-            }
-            self.progress = .idle
+            self.resetProgress()
         }
     }
     
@@ -316,8 +306,7 @@ public class DiveDataViewModel: ObservableObject {
         }
         clearFingerprint(forDeviceType: deviceType, serial: serial)
         objectWillChange.send() 
-        
-        logInfo("🗑️ Forgot device and cleared fingerprint for \(deviceType) (\(serial))")
+        logInfo("🗑️ Cleared fingerprint for \(normalizeDeviceType(deviceType)) (\(serial))")
     }
     
     public func isDownloadOnlyNewDivesEnabled(forDeviceType deviceType: String, serial: String) -> Bool {
@@ -330,5 +319,12 @@ public class DiveDataViewModel: ObservableObject {
         }
         logInfo("🔍 Download only new dives is disabled for \(deviceType) (\(serial))")
         return false
+    }
+    
+    public func resetProgress() {
+        DispatchQueue.main.async {
+            self.progress = .idle
+            self.status = ""
+        }
     }
 } 
