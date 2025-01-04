@@ -132,16 +132,22 @@ public class DiveLogRetriever {
         }
         
         let viewModel = Unmanaged<DiveDataViewModel>.fromOpaque(context).takeUnretainedValue()
-        let normalizedDeviceType = DeviceConfiguration.getDeviceDisplayName(from: String(cString: deviceType))
-        if let fingerprint = viewModel.getFingerprint(
-            forDeviceType: normalizedDeviceType,
-            serial: String(cString: serial)
-        ) {
-            logInfo("✅ Found stored fingerprint: \(fingerprint.hexString)")
-            size.pointee = fingerprint.count
-            let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: fingerprint.count)
-            fingerprint.copyBytes(to: buffer, count: fingerprint.count)
-            return buffer
+        var descriptor: OpaquePointer?
+        if find_descriptor_by_name(&descriptor, String(cString: deviceType)) == DC_STATUS_SUCCESS,
+           let desc = descriptor,
+           let product = dc_descriptor_get_product(desc) {
+            let normalizedDeviceType = String(cString: product)
+            dc_descriptor_free(desc)
+            if let fingerprint = viewModel.getFingerprint(
+                forDeviceType: normalizedDeviceType,
+                serial: String(cString: serial)
+            ) {
+                logInfo("✅ Found stored fingerprint: \(fingerprint.hexString)")
+                size.pointee = fingerprint.count
+                let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: fingerprint.count)
+                fingerprint.copyBytes(to: buffer, count: fingerprint.count)
+                return buffer
+            }
         }
         logInfo("❌ No stored fingerprint found for \(normalizedDeviceType) (\(String(cString: serial)))")
         return nil

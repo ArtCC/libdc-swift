@@ -476,13 +476,21 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
             const char *vendor = dc_descriptor_get_vendor(descriptor);
             const char *product = dc_descriptor_get_product(descriptor);
             unsigned int model = dc_descriptor_get_model(descriptor);
-            printf("✅ Found matching descriptor - Vendor: %s, Product: %s, Model: %u\n",
-                vendor ? vendor : "Unknown",
-                product ? product : "Unknown",
-                model);
-            *out_descriptor = descriptor;
-            dc_iterator_free(iterator);
-            return DC_STATUS_SUCCESS;
+            dc_family_t family = dc_descriptor_get_type(descriptor);
+            
+            // Check if the product name appears in the device name
+            if (product && strstr(name, product) != NULL) {
+                printf("✅ Found matching descriptor - Vendor: %s, Product: %s, Family: %d, Model: %u\n",
+                    vendor ? vendor : "Unknown",
+                    product ? product : "Unknown",
+                    family,
+                    model);
+                *out_descriptor = descriptor;
+                dc_iterator_free(iterator);
+                return DC_STATUS_SUCCESS;
+            }
+            dc_descriptor_free(descriptor);
+            continue;
         }
         dc_descriptor_free(descriptor);
     }
