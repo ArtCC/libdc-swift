@@ -267,9 +267,6 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
 
 /*--------------------------------------------------------------------
  * Closes and frees resources associated with a device_data structure
- * 
- * @param data: Pointer to device_data_t structure to clean up
- * @note: Does not free the descriptor as it's managed by the caller
  *------------------------------------------------------------------*/
 static void close_device_data(device_data_t *data) {
     if (!data) return;
@@ -297,7 +294,6 @@ static void close_device_data(device_data_t *data) {
         dc_context_free(data->context);
         data->context = NULL;
     }
-    // The descriptor is freed by the caller
     data->descriptor = NULL;
 }
 
@@ -319,40 +315,29 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
         return DC_STATUS_INVALIDARGS;
     }
 
-    // Initialize all pointers to NULL if not already initialized
-    if (!data->context) {
-        memset(data, 0, sizeof(device_data_t));
-    }
-
-    // Create context if needed
-    if (!data->context) {
-        rc = dc_context_new(&data->context);
-        if (rc != DC_STATUS_SUCCESS) {
-            printf("Failed to create context, rc=%d\n", rc);
-            return rc;
-        }
-    }
-
-    rc = find_descriptor_by_model(&descriptor, family, model);
+    // Initialize all pointers to NULL
+    memset(data, 0, sizeof(device_data_t));
+    
+    // Create context
+    rc = dc_context_new(&data->context);
     if (rc != DC_STATUS_SUCCESS) {
-        printf("Failed to find descriptor, rc=%d\n", rc);
+        printf("Failed to create context, rc=%d\n", rc);
         return rc;
     }
 
-    // Open the BLE connection
+    // Create BLE iostream
     rc = ble_packet_open(&data->iostream, data->context, devaddr, data);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open BLE connection, rc=%d\n", rc);
-        dc_descriptor_free(descriptor);
+        close_device_data(data);
         return rc;
     }
 
-    // Create the device
+    // Use dc_device_open to handle device-specific opening
     rc = dc_device_open(&data->device, data->context, descriptor, data->iostream);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open device, rc=%d\n", rc);
-        dc_iostream_close(data->iostream);
-        dc_descriptor_free(descriptor);
+        close_device_data(data);
         return rc;
     }
 
@@ -361,30 +346,29 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
     rc = dc_device_set_events(data->device, events, event_cb, data);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to set event handler, rc=%d\n", rc);
-        dc_device_close(data->device);
-        dc_iostream_close(data->iostream);
-        dc_descriptor_free(descriptor);
+        close_device_data(data);
         return rc;
     }
 
-    // Store the descriptor for later use
+    // Store the descriptor
     data->descriptor = descriptor;
 
     // Store model string from descriptor
-    const char *vendor = dc_descriptor_get_vendor(descriptor);
-    const char *product = dc_descriptor_get_product(descriptor);
-    if (vendor && product) {
-        size_t len = strlen(vendor) + strlen(product) + 2;  // +2 for space and null terminator
-        char *full_name = malloc(len);
-        if (full_name) {
-            snprintf(full_name, len, "%s %s", vendor, product);
-            data->model = full_name;  // Store full name
+    if (descriptor) {
+        const char *vendor = dc_descriptor_get_vendor(descriptor);
+        const char *product = dc_descriptor_get_product(descriptor);
+        if (vendor && product) {
+            // Allocate space for "Vendor Product"
+            size_t len = strlen(vendor) + strlen(product) + 2;  // +2 for space and null terminator
+            char *full_name = malloc(len);
+            if (full_name) {
+                snprintf(full_name, len, "%s %s", vendor, product);
+                data->model = full_name;  // Store full name
+            }
         }
     }
 
-    dc_descriptor_free(descriptor);
-
-    return rc;
+    return DC_STATUS_SUCCESS;
 }
 
 /*--------------------------------------------------------------------
