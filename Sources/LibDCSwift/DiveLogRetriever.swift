@@ -132,8 +132,9 @@ public class DiveLogRetriever {
         }
         
         let viewModel = Unmanaged<DiveDataViewModel>.fromOpaque(context).takeUnretainedValue()
+        let deviceTypeStr = String(cString: deviceType)
         var descriptor: OpaquePointer?
-        if find_descriptor_by_name(&descriptor, String(cString: deviceType)) == DC_STATUS_SUCCESS,
+        if find_descriptor_by_name(&descriptor, deviceTypeStr) == DC_STATUS_SUCCESS,
            let desc = descriptor,
            let product = dc_descriptor_get_product(desc) {
             let normalizedDeviceType = String(cString: product)
@@ -149,7 +150,7 @@ public class DiveLogRetriever {
                 return buffer
             }
         }
-        logInfo("❌ No stored fingerprint found for \(normalizedDeviceType) (\(String(cString: serial)))")
+        logInfo("❌ No stored fingerprint found for \(deviceTypeStr) (\(String(cString: serial)))")
         return nil
     }
     
