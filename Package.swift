@@ -68,7 +68,7 @@ let package = Package(
                 .headerSearchPath("../LibDCBridge/include")
             ],
             swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
+                .unsafeFlags(["-import-objc-header", "./Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
             ],
             linkerSettings: [
                 .linkedFramework("CoreBluetooth"),
