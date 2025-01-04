@@ -58,6 +58,7 @@ let package = Package(
             dependencies: ["LibDCBridge", "Clibdivecomputer"],
             path: "Sources/LibDCSwift",
             sources: [
+                "LibDCSwift.swift",
                 "Logger.swift",
                 "BLEManager.swift",
                 "Models/DeviceConfiguration.swift",
