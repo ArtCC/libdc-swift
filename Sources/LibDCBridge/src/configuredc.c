@@ -394,42 +394,64 @@ dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor,
 
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
+        printf("❌ Failed to create descriptor iterator: %d\n", rc);
         return rc;
     }
 
     // If name is provided, try to match using descriptor filter
     if (name != NULL) {
+        printf("🔍 Attempting to match device name: %s\n", name);
         while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
-            // Check if this descriptor supports BLE and matches the name
-            if (dc_descriptor_get_transports(descriptor) & DC_TRANSPORT_BLE &&
-                dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
-                *out_descriptor = descriptor;
-                dc_iterator_free(iterator);
-                return DC_STATUS_SUCCESS;
+            // Check if this descriptor supports BLE
+            unsigned int transports = dc_descriptor_get_transports(descriptor);
+            if (transports & DC_TRANSPORT_BLE) {
+                const char *vendor = dc_descriptor_get_vendor(descriptor);
+                const char *product = dc_descriptor_get_product(descriptor);
+                printf("📱 Checking BLE descriptor - Vendor: %s, Product: %s\n", 
+                    vendor ? vendor : "Unknown", 
+                    product ? product : "Unknown");
+                
+                // Try to match using descriptor filter
+                if (dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
+                    printf("✅ Found matching descriptor for: %s\n", name);
+                    *out_descriptor = descriptor;
+                    dc_iterator_free(iterator);
+                    return DC_STATUS_SUCCESS;
+                }
             }
             dc_descriptor_free(descriptor);
         }
+        printf("⚠️ No matching descriptor found for name: %s\n", name);
     }
 
     // Fall back to family/model matching if provided
     if (family != DC_FAMILY_NULL) {
+        printf("🔄 Falling back to family/model matching - Family: %d, Model: %u\n", family, model);
         dc_iterator_free(iterator);
         rc = dc_descriptor_iterator(&iterator);
         if (rc != DC_STATUS_SUCCESS) {
+            printf("❌ Failed to create iterator for family/model matching: %d\n", rc);
             return rc;
         }
 
         while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
             if (dc_descriptor_get_type(descriptor) == family &&
                 dc_descriptor_get_model(descriptor) == model) {
+                const char *vendor = dc_descriptor_get_vendor(descriptor);
+                const char *product = dc_descriptor_get_product(descriptor);
+                printf("✅ Found matching descriptor by family/model - Vendor: %s, Product: %s\n",
+                    vendor ? vendor : "Unknown",
+                    product ? product : "Unknown");
                 *out_descriptor = descriptor;
                 dc_iterator_free(iterator);
                 return DC_STATUS_SUCCESS;
             }
             dc_descriptor_free(descriptor);
         }
+        printf("⚠️ No matching descriptor found for family: %d, model: %u\n", family, model);
     }
 
+    printf("❌ No matching descriptor found\n");
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
 }
