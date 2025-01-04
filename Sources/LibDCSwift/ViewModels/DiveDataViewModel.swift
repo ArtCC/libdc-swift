@@ -36,6 +36,11 @@ public class DiveDataViewModel: ObservableObject {
     
     public init() {
         DiveDataViewModel.activeInstance = self
+        DeviceConfiguration.setupContext()
+    }
+    
+    deinit {
+        DeviceConfiguration.cleanupContext()
     }
     
     /// Returns the currently active download instance if one exists
@@ -69,12 +74,7 @@ public class DiveDataViewModel: ObservableObject {
     private func normalizeDeviceType(_ deviceType: String) -> String {
         // Try to find matching descriptor using libdivecomputer's filter system
         var descriptor: OpaquePointer?
-        let status = find_matching_descriptor(
-            &descriptor,
-            DC_FAMILY_NULL,
-            0,
-            deviceType.cString(using: .utf8)
-        )
+        let status = find_descriptor_by_name(&descriptor, deviceType)
         
         if status == DC_STATUS_SUCCESS,
            let desc = descriptor,

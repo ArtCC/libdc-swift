@@ -311,36 +311,48 @@ static void close_device_data(device_data_t *data) {
  * @return: DC_STATUS_SUCCESS on success, error code otherwise
  * @note: Takes ownership of the device_data_t structure
  *------------------------------------------------------------------*/
-dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor) {
+dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model) {
     dc_status_t rc;
-    
-    if (!data || !devaddr || !descriptor) {
+    dc_descriptor_t *descriptor = NULL;
+
+    if (!data || !devaddr) {
         return DC_STATUS_INVALIDARGS;
     }
 
-    // Initialize all pointers to NULL
-    memset(data, 0, sizeof(device_data_t));
-    
-    // Create context
-    rc = dc_context_new(&data->context);
+    // Initialize all pointers to NULL if not already initialized
+    if (!data->context) {
+        memset(data, 0, sizeof(device_data_t));
+    }
+
+    // Create context if needed
+    if (!data->context) {
+        rc = dc_context_new(&data->context);
+        if (rc != DC_STATUS_SUCCESS) {
+            printf("Failed to create context, rc=%d\n", rc);
+            return rc;
+        }
+    }
+
+    rc = find_descriptor_by_model(&descriptor, family, model);
     if (rc != DC_STATUS_SUCCESS) {
-        printf("Failed to create context, rc=%d\n", rc);
+        printf("Failed to find descriptor, rc=%d\n", rc);
         return rc;
     }
 
-    // Create BLE iostream
+    // Open the BLE connection
     rc = ble_packet_open(&data->iostream, data->context, devaddr, data);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open BLE connection, rc=%d\n", rc);
-        close_device_data(data);
+        dc_descriptor_free(descriptor);
         return rc;
     }
 
-    // Use dc_device_open to handle device-specific opening
+    // Create the device
     rc = dc_device_open(&data->device, data->context, descriptor, data->iostream);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to open device, rc=%d\n", rc);
-        close_device_data(data);
+        dc_iostream_close(data->iostream);
+        dc_descriptor_free(descriptor);
         return rc;
     }
 
@@ -349,44 +361,44 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
     rc = dc_device_set_events(data->device, events, event_cb, data);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to set event handler, rc=%d\n", rc);
-        close_device_data(data);
+        dc_device_close(data->device);
+        dc_iostream_close(data->iostream);
+        dc_descriptor_free(descriptor);
         return rc;
     }
 
-    // Store the descriptor
+    // Store the descriptor for later use
     data->descriptor = descriptor;
 
     // Store model string from descriptor
-    if (descriptor) {
-        const char *vendor = dc_descriptor_get_vendor(descriptor);
-        const char *product = dc_descriptor_get_product(descriptor);
-        if (vendor && product) {
-            // Allocate space for "Vendor Product"
-            size_t len = strlen(vendor) + strlen(product) + 2;  // +2 for space and null terminator
-            char *full_name = malloc(len);
-            if (full_name) {
-                snprintf(full_name, len, "%s %s", vendor, product);
-                data->model = full_name;  // Store full name
-            }
+    const char *vendor = dc_descriptor_get_vendor(descriptor);
+    const char *product = dc_descriptor_get_product(descriptor);
+    if (vendor && product) {
+        size_t len = strlen(vendor) + strlen(product) + 2;  // +2 for space and null terminator
+        char *full_name = malloc(len);
+        if (full_name) {
+            snprintf(full_name, len, "%s %s", vendor, product);
+            data->model = full_name;  // Store full name
         }
     }
 
-    return DC_STATUS_SUCCESS;
+    dc_descriptor_free(descriptor);
+
+    return rc;
 }
 
 /*--------------------------------------------------------------------
  * Helper function to find a matching device descriptor
  * 
  * @param out_descriptor: Output parameter for found descriptor
- * @param family:         Device family to match (ignored if name provided)
- * @param model:          Device model to match (ignored if name provided)
- * @param name:           Device name to match (takes precedence over family/model)
+ * @param family:         Device family to match
+ * @param model:          Device model to match
  * 
  * @return: DC_STATUS_SUCCESS on success, error code otherwise
  * @note: Caller must free the returned descriptor when done
  *------------------------------------------------------------------*/
-dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor, 
-    dc_family_t family, unsigned int model, const char *name) {
+dc_status_t find_descriptor_by_model(dc_descriptor_t **out_descriptor, 
+    dc_family_t family, unsigned int model) {
     
     dc_iterator_t *iterator = NULL;
     dc_descriptor_t *descriptor = NULL;
@@ -398,118 +410,20 @@ dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor,
         return rc;
     }
 
-    // If name is provided, try to match using descriptor filter
-    if (name != NULL) {
-        printf("🔍 Attempting to match device name: %s\n", name);
-        while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
-            // Check if this descriptor supports BLE
-            unsigned int transports = dc_descriptor_get_transports(descriptor);
-            if (transports & DC_TRANSPORT_BLE) {
-                const char *vendor = dc_descriptor_get_vendor(descriptor);
-                const char *product = dc_descriptor_get_product(descriptor);
-                printf("📱 Checking BLE descriptor - Vendor: %s, Product: %s\n", 
-                    vendor ? vendor : "Unknown", 
-                    product ? product : "Unknown");
-                
-                // Try to match using descriptor filter
-                if (dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
-                    printf("✅ Found matching descriptor for: %s\n", name);
-                    *out_descriptor = descriptor;
-                    dc_iterator_free(iterator);
-                    return DC_STATUS_SUCCESS;
-                }
-            }
-            dc_descriptor_free(descriptor);
+    printf("🔍 Attempting exact match - Family: %d, Model: %u\n", family, model);
+    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+        if (dc_descriptor_get_type(descriptor) == family &&
+            dc_descriptor_get_model(descriptor) == model) {
+            *out_descriptor = descriptor;
+            dc_iterator_free(iterator);
+            return DC_STATUS_SUCCESS;
         }
-        printf("⚠️ No matching descriptor found for name: %s\n", name);
-    }
-
-    // Fall back to family/model matching if provided
-    if (family != DC_FAMILY_NULL) {
-        printf("🔄 Falling back to family/model matching - Family: %d, Model: %u\n", family, model);
-        dc_iterator_free(iterator);
-        rc = dc_descriptor_iterator(&iterator);
-        if (rc != DC_STATUS_SUCCESS) {
-            printf("❌ Failed to create iterator for family/model matching: %d\n", rc);
-            return rc;
-        }
-
-        while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
-            if (dc_descriptor_get_type(descriptor) == family &&
-                dc_descriptor_get_model(descriptor) == model) {
-                const char *vendor = dc_descriptor_get_vendor(descriptor);
-                const char *product = dc_descriptor_get_product(descriptor);
-                printf("✅ Found matching descriptor by family/model - Vendor: %s, Product: %s\n",
-                    vendor ? vendor : "Unknown",
-                    product ? product : "Unknown");
-                *out_descriptor = descriptor;
-                dc_iterator_free(iterator);
-                return DC_STATUS_SUCCESS;
-            }
-            dc_descriptor_free(descriptor);
-        }
-        printf("⚠️ No matching descriptor found for family: %d, model: %u\n", family, model);
+        dc_descriptor_free(descriptor);
     }
 
     printf("❌ No matching descriptor found\n");
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
-}
-
-/*--------------------------------------------------------------------
- * Identifies a BLE device's family and model from its name
- * 
- * @param name:   Device name to identify
- * @param family: Output parameter for identified device family
- * @param model:  Output parameter for identified device model
- * 
- * @return: DC_STATUS_SUCCESS on success, error code otherwise
- *------------------------------------------------------------------*/
-dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model) {
-    dc_descriptor_t *descriptor = NULL;
-    dc_status_t rc;
-
-    rc = find_matching_descriptor(&descriptor, DC_FAMILY_NULL, 0, name);
-    if (rc != DC_STATUS_SUCCESS) {
-        return rc;
-    }
-
-    *family = (dc_family_t)dc_descriptor_get_type(descriptor);
-    *model = dc_descriptor_get_model(descriptor);
-    dc_descriptor_free(descriptor);
-    return DC_STATUS_SUCCESS;
-}
-
-/*--------------------------------------------------------------------
- * Opens a BLE device connection using family and model information
- * 
- * @param data:    Pointer to device_data_t to store device info
- * @param devaddr: BLE device address/UUID
- * @param family:  Device family identifier
- * @param model:   Device model identifier
- * 
- * @return: DC_STATUS_SUCCESS on success, error code otherwise
- *------------------------------------------------------------------*/
-dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model) {
-    dc_status_t rc;
-    dc_descriptor_t *descriptor = NULL;
-
-    if (!data->context) {
-        rc = dc_context_new(&data->context);
-        if (rc != DC_STATUS_SUCCESS) {
-            return rc;
-        }
-    }
-
-    rc = find_matching_descriptor(&descriptor, family, model, NULL);
-    if (rc != DC_STATUS_SUCCESS) {
-        return rc;
-    }
-
-    rc = open_ble_device_with_descriptor(data, devaddr, descriptor);
-    dc_descriptor_free(descriptor);
-
-    return rc;
 }
 
 /*--------------------------------------------------------------------
@@ -531,7 +445,7 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
     dc_status_t rc;
     dc_descriptor_t *descriptor = NULL;
 
-    rc = find_matching_descriptor(&descriptor, family, model, NULL);
+    rc = find_descriptor_by_model(&descriptor, family, model);
     if (rc != DC_STATUS_SUCCESS) {
         return rc;
     }
@@ -541,4 +455,142 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
     dc_descriptor_free(descriptor);
 
     return rc;
+}
+
+/*--------------------------------------------------------------------
+ * Helper function to find a matching BLE device descriptor by name
+ * 
+ * @param out_descriptor: Output parameter for found descriptor
+ * @param name:          Device name to match
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ * @note: Caller must free the returned descriptor when done
+ *------------------------------------------------------------------*/
+dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char *name) {
+    dc_iterator_t *iterator = NULL;
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+
+    rc = dc_descriptor_iterator(&iterator);
+    if (rc != DC_STATUS_SUCCESS) {
+        printf("❌ Failed to create descriptor iterator: %d\n", rc);
+        return rc;
+    }
+
+    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+        unsigned int transports = dc_descriptor_get_transports(descriptor);
+        if ((transports & DC_TRANSPORT_BLE) && dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
+            *out_descriptor = descriptor;
+            dc_iterator_free(iterator);
+            return DC_STATUS_SUCCESS;
+        }
+        dc_descriptor_free(descriptor);
+    }
+
+    dc_iterator_free(iterator);
+    return DC_STATUS_UNSUPPORTED;
+}
+
+/*--------------------------------------------------------------------
+ * Gets device family and model for a BLE device by name
+ * 
+ * @param name:   Device name to identify
+ * @param family: Output parameter for device family
+ * @param model:  Output parameter for device model
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ *------------------------------------------------------------------*/
+dc_status_t get_device_info_from_name(const char *name, dc_family_t *family, unsigned int *model) {
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+
+    rc = find_descriptor_by_name(&descriptor, name);
+    if (rc != DC_STATUS_SUCCESS) {
+        return rc;
+    }
+
+    *family = dc_descriptor_get_type(descriptor);
+    *model = dc_descriptor_get_model(descriptor);
+    dc_descriptor_free(descriptor);
+    return DC_STATUS_SUCCESS;
+}
+
+/*--------------------------------------------------------------------
+ * Gets formatted display name for a device (vendor + product)
+ * 
+ * @param name: Device name to match
+ * 
+ * @return: Formatted display name string (caller must free), or NULL if not found
+ *------------------------------------------------------------------*/
+char* get_formatted_device_name(const char *name) {
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+    char *result = NULL;
+
+    rc = find_descriptor_by_name(&descriptor, name);
+    if (rc != DC_STATUS_SUCCESS) {
+        return NULL;
+    }
+
+    const char *vendor = dc_descriptor_get_vendor(descriptor);
+    const char *product = dc_descriptor_get_product(descriptor);
+    
+    if (vendor && product) {
+        size_t len = strlen(vendor) + strlen(product) + 2; // +2 for space and null terminator
+        result = (char*)malloc(len);
+        if (result) {
+            snprintf(result, len, "%s %s", vendor, product);
+        }
+    }
+
+    dc_descriptor_free(descriptor);
+    return result;
+}
+
+/*--------------------------------------------------------------------
+ * Helper function to open BLE device with stored or identified configuration
+ * 
+ * @param out_data: Output parameter for created device_data_t
+ * @param name:     Device name to match
+ * @param address:  BLE device address/UUID
+ * @param stored_family: Optional stored device family (pass DC_FAMILY_NULL if none)
+ * @param stored_model:  Optional stored device model (pass 0 if none)
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ *------------------------------------------------------------------*/
+dc_status_t open_ble_device_with_identification(device_data_t **out_data, 
+    const char *name, const char *address,
+    dc_family_t stored_family, unsigned int stored_model) 
+{
+    device_data_t *data = (device_data_t*)calloc(1, sizeof(device_data_t));
+    if (!data) return DC_STATUS_NOMEMORY;
+    
+    dc_family_t family;
+    unsigned int model;
+    dc_status_t rc;
+    
+    // Try stored configuration first if provided
+    if (stored_family != DC_FAMILY_NULL && stored_model != 0) {
+        rc = open_ble_device(data, address, stored_family, stored_model);
+        if (rc == DC_STATUS_SUCCESS) {
+            *out_data = data;
+            return DC_STATUS_SUCCESS;
+        }
+    }
+    
+    // Fall back to identification if stored config failed or wasn't provided
+    rc = get_device_info_from_name(name, &family, &model);
+    if (rc != DC_STATUS_SUCCESS) {
+        free(data);
+        return rc;
+    }
+    
+    rc = open_ble_device(data, address, family, model);
+    if (rc != DC_STATUS_SUCCESS) {
+        free(data);
+        return rc;
+    }
+    
+    *out_data = data;
+    return DC_STATUS_SUCCESS;
 }

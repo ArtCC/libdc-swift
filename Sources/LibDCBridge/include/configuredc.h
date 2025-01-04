@@ -1,6 +1,9 @@
 #ifndef CONFIGUREDC_H
 #define CONFIGUREDC_H
 
+/*--------------------------------------------------------------------
+ * Includes
+ *------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <stdint.h>
 #include <libdivecomputer/common.h>
@@ -15,6 +18,9 @@
 extern "C" {
 #endif
 
+/*--------------------------------------------------------------------
+ * Type Definitions
+ *------------------------------------------------------------------*/
 // Forward declare opaque types
 typedef struct dc_device_t dc_device_t;
 typedef struct dc_event_devinfo_t dc_event_devinfo_t;
@@ -61,18 +67,96 @@ typedef void (*dc_event_callback_t)(dc_device_t *device,
                                   const void *data, 
                                   void *userdata);
 
-dc_status_t ble_packet_open(dc_iostream_t **iostream, dc_context_t *context, const char *devaddr, void *userdata);
-dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
-dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
-dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor);
-dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context, dc_family_t family, unsigned int model, const unsigned char *data, size_t size);
-device_data_t* get_device_data_pointer(void);
-dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor, 
-    dc_family_t family, unsigned int model, const char *name);
+/*--------------------------------------------------------------------
+ * Device Descriptor Functions
+ *------------------------------------------------------------------*/
+/**
+ * Finds a device descriptor by family and model
+ * @param out_descriptor: Output parameter for found descriptor
+ * @param family: Device family to match
+ * @param model: Device model to match
+ * @return DC_STATUS_SUCCESS on success
+ * @note Caller must free the returned descriptor
+ */
+dc_status_t find_descriptor_by_model(dc_descriptor_t **out_descriptor, 
+    dc_family_t family, unsigned int model);
 
-dc_family_t dc_descriptor_get_type(dc_descriptor_t *descriptor);
-unsigned int dc_descriptor_get_model(dc_descriptor_t *descriptor);
-const char *dc_descriptor_get_product(dc_descriptor_t *descriptor);
+/**
+ * Finds a device descriptor by BLE device name
+ * @param out_descriptor: Output parameter for found descriptor
+ * @param name: Device name to match
+ * @return DC_STATUS_SUCCESS on success
+ * @note Caller must free the returned descriptor
+ */
+dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char *name);
+
+/*--------------------------------------------------------------------
+ * BLE Device Functions
+ *------------------------------------------------------------------*/
+/**
+ * Gets device family and model information from BLE name
+ * @param name: Device name to identify
+ * @param family: Output parameter for device family
+ * @param model: Output parameter for device model
+ * @return DC_STATUS_SUCCESS on success
+ */
+dc_status_t get_device_info_from_name(const char *name, dc_family_t *family, unsigned int *model);
+
+/**
+ * Gets formatted display name for a device
+ * @param name: Device name to match
+ * @return Formatted string "Vendor Product" (caller must free) or NULL
+ */
+char* get_formatted_device_name(const char *name);
+
+/**
+ * Opens a BLE device connection
+ * @param data: Device data structure to initialize
+ * @param devaddr: BLE device address/UUID
+ * @param family: Device family
+ * @param model: Device model
+ * @return DC_STATUS_SUCCESS on success
+ */
+dc_status_t open_ble_device(device_data_t *data, const char *devaddr, 
+    dc_family_t family, unsigned int model);
+
+/**
+ * Opens a BLE device with automatic identification
+ * @param out_data: Output parameter for device data
+ * @param name: Device name
+ * @param address: BLE device address
+ * @param stored_family: Optional stored family (DC_FAMILY_NULL if none)
+ * @param stored_model: Optional stored model (0 if none)
+ * @return DC_STATUS_SUCCESS on success
+ */
+dc_status_t open_ble_device_with_identification(device_data_t **out_data, 
+    const char *name, const char *address,
+    dc_family_t stored_family, unsigned int stored_model);
+
+/*--------------------------------------------------------------------
+ * Parser Functions
+ *------------------------------------------------------------------*/
+/**
+ * Creates a parser for dive data
+ * @param parser: Output parameter for created parser
+ * @param context: Dive computer context
+ * @param family: Device family
+ * @param model: Device model
+ * @param data: Raw dive data
+ * @param size: Size of raw data
+ * @return DC_STATUS_SUCCESS on success
+ */
+dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context,
+    dc_family_t family, unsigned int model, const unsigned char *data, size_t size);
+
+/*--------------------------------------------------------------------
+ * Utility Functions
+ *------------------------------------------------------------------*/
+/**
+ * Gets pointer to device data structure
+ * @return Pointer to device_data_t or NULL
+ */
+device_data_t* get_device_data_pointer(void);
 
 #ifdef __cplusplus
 }

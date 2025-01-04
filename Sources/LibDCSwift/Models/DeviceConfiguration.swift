@@ -99,117 +99,49 @@ import LibDCBridge
     @objc public static func openBLEDevice(name: String, deviceAddress: String) -> Bool {
         logDebug("Attempting to open BLE device: \(name) at address: \(deviceAddress)")
         
-        // Allocate device data first
-        let deviceData = UnsafeMutablePointer<device_data_t>.allocate(capacity: 1)
-        deviceData.initialize(to: device_data_t())
+        var deviceData: UnsafeMutablePointer<device_data_t>?
+        let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: deviceAddress)
         
-        // Try to get stored device info first
-        if let storedDevice = DeviceStorage.shared.getStoredDevice(uuid: deviceAddress) {
+        if let storedDevice = storedDevice {
             logDebug("Found stored device configuration - Family: \(storedDevice.family), Model: \(storedDevice.model)")
-            let openStatus = open_ble_device(
-                deviceData,
-                deviceAddress.cString(using: .utf8),
-                storedDevice.family.asDCFamily,
-                storedDevice.model
-            )
-            
-            if openStatus == DC_STATUS_SUCCESS {
-                logDebug("Successfully opened device using stored configuration")
-                logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
-                DispatchQueue.main.async {
-                    if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
-                        manager.openedDeviceDataPtr = deviceData
-                    }
-                }
-                return true
-            }
-            
-            logDebug("Failed to open with stored config (status: \(openStatus)), falling back to identification")
         }
         
-        // Use descriptor system to identify device
-        if let (family, model) = fromName(name) {
-            let openStatus = open_ble_device(
-                deviceData,
-                deviceAddress.cString(using: .utf8),
-                family.asDCFamily,
-                model
-            )
-            
-            if openStatus == DC_STATUS_SUCCESS {
-                logDebug("Successfully opened device with descriptor configuration")
-                logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
-                DispatchQueue.main.async {
-                    if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
-                        manager.openedDeviceDataPtr = deviceData
-                    }
-                }
-                return true
-            }
-        }
-        
-        // Fall back to libdivecomputer's identify_ble_device
-        var family: dc_family_t = DC_FAMILY_NULL
-        var model: UInt32 = 0
-        
-        let status = identify_ble_device(
-            name.cString(using: .utf8),
-            &family,
-            &model
+        let status = open_ble_device_with_identification(
+            &deviceData,
+            name,
+            deviceAddress,
+            storedDevice?.family.asDCFamily ?? DC_FAMILY_NULL,
+            storedDevice?.model ?? 0
         )
         
-        guard status == DC_STATUS_SUCCESS else {
-            logError("Failed to identify device: \(status)")
-            deviceData.deallocate()
-            return false
-        }
-        
-        logDebug("Device identified successfully - Family: \(family), Model: \(model)")
-        
-        let openStatus = open_ble_device(
-            deviceData,
-            deviceAddress.cString(using: .utf8),
-            family,
-            model
-        )
-        
-        if openStatus == DC_STATUS_SUCCESS {
-            logDebug("Successfully opened device with new configuration")
-            logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
+        if status == DC_STATUS_SUCCESS, let data = deviceData {
+            logDebug("Successfully opened device")
+            logDebug("Device data pointer allocated at: \(String(describing: data))")
             DispatchQueue.main.async {
                 if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
-                    manager.openedDeviceDataPtr = deviceData
+                    manager.openedDeviceDataPtr = data
                 }
             }
             return true
-        } else {
-            logError("Failed to open device: \(openStatus)")
-            deviceData.deallocate()
-            return false
         }
+        
+        logError("Failed to open device (status: \(status))")
+        if let data = deviceData {
+            data.deallocate()
+        }
+        return false
     }
     
-    /// Attempts to identify a dive computer's family and model from its name.
-    /// This function tries two methods:
-    /// 1. Use libdivecomputer's descriptor system
-    /// 2. Fall back to libdivecomputer's identify_ble_device
-    /// - Parameter name: The advertised name of the BLE device
-    /// - Returns: A tuple containing the device family and model number, or nil if not identified
-    public static func identifyDevice(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        return fromName(name) ?? identifyDeviceFromDescriptor(name: name)
-    }
-    
-    /// Attempts to identify a device's family and model number from its name using libdivecomputer's descriptor system.
-    /// Only considers BLE-capable devices.
+    /// Identifies a BLE device from its name using libdivecomputer's descriptor system
     /// - Parameter name: The device name to identify
     /// - Returns: A tuple containing the device family and model number, or nil if not identified
-    static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
-        var descriptor: OpaquePointer?
+    public static func identifyDevice(name: String) -> (family: DeviceFamily, model: UInt32)? {
         var family: dc_family_t = DC_FAMILY_NULL
         var model: UInt32 = 0
         
-        let rc = find_matching_descriptor(&descriptor, family, model, name)
-        if rc == DC_STATUS_SUCCESS, let deviceFamily = DeviceFamily(dcFamily: family) {
+        let status = get_device_info_from_name(name, &family, &model)
+        if status == DC_STATUS_SUCCESS,
+           let deviceFamily = DeviceFamily(dcFamily: family) {
             return (deviceFamily, model)
         }
         return nil
@@ -218,40 +150,61 @@ import LibDCBridge
     /// Returns a human-readable display name for a device using libdivecomputer's vendor and product information.
     /// Only considers BLE-capable devices.
     /// - Parameter name: The device name to get display name for
-    /// - Returns: A formatted string containing the vendor and product name, or "Unknown Device" if not found
+    /// - Returns: A formatted string containing the vendor and product name, or the original name if not found
     public static func getDeviceDisplayName(from name: String) -> String {
-        var descriptor: OpaquePointer?
-        var family: dc_family_t = DC_FAMILY_NULL
-        var model: UInt32 = 0
-        
-        let rc = find_matching_descriptor(&descriptor, family, model, name)
-        if rc == DC_STATUS_SUCCESS,
-           let vendor = dc_descriptor_get_vendor(descriptor),
-           let product = dc_descriptor_get_product(descriptor) {
-            return "\(String(cString: vendor)) \(String(cString: product))"
+        if let cString = get_formatted_device_name(name) {
+            defer { free(cString) }
+            return String(cString: cString)
         }
-        return "Unknown Device"
+        return name
     }
     
-    /// Attempts to identify a device using libdivecomputer's built-in identification function.
-    /// Used as a fallback when descriptor-based identification fails.
-    /// - Parameter name: The device name to identify
-    /// - Returns: A tuple containing the device family and model number, or nil if not identified
-    private static func identifyDeviceFromDescriptor(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        var family: dc_family_t = DC_FAMILY_NULL
-        var model: UInt32 = 0
-        
-        let status = identify_ble_device(
-            name.cString(using: .utf8),
-            &family,
-            &model
-        )
-        
-        guard status == DC_STATUS_SUCCESS,
-              let deviceFamily = DeviceFamily(dcFamily: family) else {
+    private var descriptor: OpaquePointer?
+    private static var context: OpaquePointer?
+    
+    /// Setup the shared device context
+    public static func setupContext() {
+        if context == nil {
+            let rc = dc_context_new(&context)
+            if rc != DC_STATUS_SUCCESS {
+                logError("Failed to create dive computer context")
+            }
+        }
+    }
+    
+    /// Cleanup the shared device context
+    public static func cleanupContext() {
+        if let ctx = context {
+            dc_context_free(ctx)
+            context = nil
+        }
+    }
+    
+    /// Creates a parser for dive data
+    /// - Parameters:
+    ///   - family: Device family
+    ///   - model: Device model
+    ///   - data: Raw dive data to parse
+    /// - Returns: Parser instance if successful, nil otherwise
+    public static func createParser(family: dc_family_t, model: UInt32, data: Data) -> OpaquePointer? {
+        guard let context = context else {
+            logError("No dive computer context available")
             return nil
         }
         
-        return (deviceFamily, model)
+        var parser: OpaquePointer?
+        let rc = create_parser_for_device(
+            &parser,
+            context,
+            family,
+            model,
+            [UInt8](data),
+            data.count
+        )
+        if rc != DC_STATUS_SUCCESS {
+            logError("Failed to create parser: \(rc)")
+            return nil
+        }
+        return parser
     }
 }

@@ -33,12 +33,7 @@ public class DeviceFingerprintStorage {
     private func normalizeDeviceType(_ deviceType: String) -> String {
         // Try to find matching descriptor from libdivecomputer
         var descriptor: OpaquePointer?
-        let status = find_matching_descriptor(
-            &descriptor,
-            DC_FAMILY_NULL, // Use null family to match by name only
-            0,             // Model 0 to match by name only
-            deviceType     // Device name to match
-        )
+        let status = find_descriptor_by_name(&descriptor, deviceType)
         
         // If we found a matching descriptor, use its product name
         if status == DC_STATUS_SUCCESS,
