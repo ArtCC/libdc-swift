@@ -41,6 +41,10 @@ public class CoreBluetoothManager: NSObject, CoreBluetoothManagerProtocol, Obser
         return sharedInstance
     }
     
+    public static var sharedManager: CoreBluetoothManager {
+        return sharedInstance
+    }
+    
     // MARK: - Published Properties
     @Published public var centralManager: CBCentralManager! // Core Bluetooth central manager instance
     @Published public var peripheral: CBPeripheral? // Currently selected peripheral device
