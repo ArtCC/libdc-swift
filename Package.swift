@@ -14,6 +14,7 @@ let package = Package(
         ),
         .library(
             name: "LibDCBridge",
+            type: .dynamic,
             targets: ["LibDCBridge"]
         )
     ],
@@ -66,9 +67,6 @@ let package = Package(
             ],
             cSettings: [
                 .headerSearchPath("../LibDCBridge/include")
-            ],
-            swiftSettings: [
-                .unsafeFlags(["-import-objc-header", "Sources/LibDCBridge/include/libdcswift-bridging-header.h"])
             ],
             linkerSettings: [
                 .linkedFramework("CoreBluetooth"),

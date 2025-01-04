@@ -1,0 +1,9 @@
+module LibDCBridge {
+    header "BLEBridge.h"
+    header "configuredc.h"
+    
+    export *
+    module * { export * }
+    
+    requires objc
+}

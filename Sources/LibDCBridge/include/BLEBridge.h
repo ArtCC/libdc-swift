@@ -4,6 +4,15 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#if __has_feature(modules)
+@import Foundation;
+@import CoreBluetooth;
+#else
+#import <Foundation/Foundation.h>
+#import <CoreBluetooth/CoreBluetooth.h>
+#endif
+
 #include "libdivecomputer/common.h"
 #include "libdivecomputer/iostream.h"
 #include "libdivecomputer/custom.h"
