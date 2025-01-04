@@ -325,6 +325,14 @@ dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_
         return rc;
     }
 
+    // Get descriptor for the device
+    rc = find_descriptor_by_model(&descriptor, family, model);
+    if (rc != DC_STATUS_SUCCESS) {
+        printf("Failed to find descriptor, rc=%d\n", rc);
+        close_device_data(data);
+        return rc;
+    }
+
     // Create BLE iostream
     rc = ble_packet_open(&data->iostream, data->context, devaddr, data);
     if (rc != DC_STATUS_SUCCESS) {
