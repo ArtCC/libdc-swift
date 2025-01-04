@@ -1,9 +1,13 @@
 module LibDCBridge {
-    header "BLEBridge.h"
-    header "configuredc.h"
+    umbrella header "BLEBridge.h"
     
-    export *
-    module * { export * }
+    explicit module CoreBluetoothManagerProtocol {
+        header "CoreBluetoothManagerProtocol.h"
+        requires objc
+        export *
+    }
     
-    requires objc
+    module * { 
+        export * 
+    }
 }

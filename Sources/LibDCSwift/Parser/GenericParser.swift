@@ -1,5 +1,6 @@
 import Foundation
 import Clibdivecomputer
+import LibDCBridge
 
 /*
  Generic Dive Computer Parser

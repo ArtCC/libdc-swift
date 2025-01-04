@@ -1,4 +1,7 @@
 import Foundation
+import CoreBluetooth
+import Clibdivecomputer
+import LibDCBridge
 #if canImport(UIKit)
 import UIKit
 #endif

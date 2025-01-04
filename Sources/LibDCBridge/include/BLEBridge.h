@@ -5,12 +5,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if __has_feature(modules)
-@import Foundation;
-@import CoreBluetooth;
-#else
-#import <Foundation/Foundation.h>
-#import <CoreBluetooth/CoreBluetooth.h>
+#ifdef __OBJC__
+    #if __has_feature(modules)
+        @import Foundation;
+        @import CoreBluetooth;
+    #else
+        #import <Foundation/Foundation.h>
+        #import <CoreBluetooth/CoreBluetooth.h>
+    #endif
 #endif
 
 #include "libdivecomputer/common.h"
@@ -18,6 +20,7 @@
 #include "libdivecomputer/custom.h"
 #include "libdivecomputer/parser.h"
 #include "configuredc.h"
+#include "CoreBluetoothManagerProtocol.h"
 
 // Array helper functions
 static inline uint16_t array_uint16_le(const unsigned char array[]) {

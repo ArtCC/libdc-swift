@@ -1,6 +1,8 @@
 import Foundation
+import CoreBluetooth
+import Clibdivecomputer
+import LibDCBridge
 import Combine
-import LibDCSwift
 
 /// Protocol for implementing persistence of dive data
 public protocol DiveDataPersistence: AnyObject {

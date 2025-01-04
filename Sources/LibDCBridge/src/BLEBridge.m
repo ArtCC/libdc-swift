@@ -1,21 +1,11 @@
 #import "BLEBridge.h"
 #import <Foundation/Foundation.h>
 
-// Forward-declare the Swift class so this file can compile.
-@interface CoreBluetoothManager : NSObject
-+ (instancetype)shared;
-- (bool)connectToDevice:(NSString*)deviceAddress;
-- (bool)discoverServices;
-- (bool)enableNotifications;
-- (NSData*)readDataPartial:(int)length;
-- (bool)writeData:(NSData*)data;
-- (void)close;
-@end
-
-static CoreBluetoothManager *bleManager = nil;
+static id<CoreBluetoothManagerProtocol> bleManager = nil;
 
 void initializeBLEManager(void) {
-    bleManager = CoreBluetoothManager.shared;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    bleManager = [CoreBluetoothManagerClass shared];
 }
 
 ble_object_t* createBLEObject(void) {
@@ -36,7 +26,8 @@ bool connectToBLEDevice(ble_object_t *io, const char *deviceAddress) {
         return false;
     }
     
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     NSString *address = [NSString stringWithUTF8String:deviceAddress];
     
     bool success = [manager connectToDevice:address];
@@ -68,12 +59,14 @@ bool connectToBLEDevice(ble_object_t *io, const char *deviceAddress) {
 }
 
 bool discoverServices(ble_object_t *io) {
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     return [manager discoverServices];
 }
 
 bool enableNotifications(ble_object_t *io) {
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     return [manager enableNotifications];
 }
 
@@ -96,7 +89,8 @@ dc_status_t ble_read(ble_object_t *io, void *buffer, size_t requested, size_t *a
         return DC_STATUS_INVALIDARGS;
     }
     
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager *)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     uint8_t *outPtr = (uint8_t *)buffer;
     size_t total = 0;
     
@@ -128,7 +122,8 @@ dc_status_t ble_read(ble_object_t *io, void *buffer, size_t requested, size_t *a
 }
 
 dc_status_t ble_write(ble_object_t *io, const void *data, size_t size, size_t *actual) {
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     NSData *nsData = [NSData dataWithBytes:data length:size];
     
     if ([manager writeData:nsData]) {
@@ -141,7 +136,8 @@ dc_status_t ble_write(ble_object_t *io, const void *data, size_t size, size_t *a
 }
 
 dc_status_t ble_close(ble_object_t *io) {
-    CoreBluetoothManager *manager = (__bridge CoreBluetoothManager*)io->manager;
+    Class CoreBluetoothManagerClass = NSClassFromString(@"CoreBluetoothManager");
+    id<CoreBluetoothManagerProtocol> manager = [CoreBluetoothManagerClass shared];
     [manager close];
     return DC_STATUS_SUCCESS;
 }

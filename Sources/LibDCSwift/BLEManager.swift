@@ -5,6 +5,7 @@ import UIKit
 import CoreBluetooth
 import Clibdivecomputer
 import LibDCBridge
+import LibDCBridge.CoreBluetoothManagerProtocol
 import Combine
 
 /// Represents a BLE serial service with its identifying information
@@ -32,9 +33,13 @@ extension CBUUID {
 /// Central manager for handling BLE communications with dive computers.
 /// Manages device discovery, connection, and data transfer with BLE dive computers.
 @objc(CoreBluetoothManager)
-public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+public class CoreBluetoothManager: NSObject, CoreBluetoothManagerProtocol, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Singleton
-    @objc public static let shared = CoreBluetoothManager() // Shared instance of the BLE manager
+    private static let sharedInstance = CoreBluetoothManager()
+    
+    @objc public static func shared() -> Any! {
+        return sharedInstance
+    }
     
     // MARK: - Published Properties
     @Published public var centralManager: CBCentralManager! // Core Bluetooth central manager instance
@@ -119,7 +124,8 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     }
     
     // MARK: - Service Discovery
-    @objc internal func discoverServices() -> Bool {
+    @objc(discoverServices)
+    public func discoverServices() -> Bool {
         guard let peripheral = self.peripheral else { return false }
         peripheral.discoverServices(nil)
         while writeCharacteristic == nil || notifyCharacteristic == nil {
@@ -129,7 +135,8 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return writeCharacteristic != nil && notifyCharacteristic != nil
     }
     
-    @objc internal func enableNotifications() -> Bool {
+    @objc(enableNotifications)
+    public func enableNotifications() -> Bool {
         guard let notifyCharacteristic = self.notifyCharacteristic,
               let peripheral = self.peripheral else { return false }
         peripheral.setNotifyValue(true, for: notifyCharacteristic)
@@ -165,14 +172,14 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         return frameToReturn
     }
     
-    @objc public func writeData(_ data: Data) -> Bool {
+    @objc public func write(_ data: Data!) -> Bool {
         guard let peripheral = self.peripheral,
               let characteristic = self.writeCharacteristic else { return false }
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
         return true
     }
     
-    @objc public func readDataPartial(_ requested: Int) -> Data? {
+    @objc public func readDataPartial(_ requested: Int32) -> Data! {
         let startTime = Date()
         let partialTimeout: TimeInterval = 0.5
         
@@ -180,7 +187,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
             var outData: Data?
             queue.sync {
                 if receivedData.count > 0 {
-                    let amount = min(requested, receivedData.count)
+                    let amount = min(Int(requested), receivedData.count)
                     outData = receivedData.prefix(amount)
                     receivedData.removeSubrange(0..<amount)
                 }
@@ -247,7 +254,7 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
         isScanning = false
     }
     
-    @objc public func connectToDevice(_ address: String) -> Bool {
+    @objc public func connect(toDevice address: String!) -> Bool {
         guard let uuid = UUID(uuidString: address),
               let peripheral = centralManager.retrievePeripherals(withIdentifiers: [uuid]).first else {
             return false
@@ -572,6 +579,10 @@ public class CoreBluetoothManager: NSObject, ObservableObject, CBCentralManagerD
     private func isReadCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
         return characteristic.properties.contains(.notify) ||
                characteristic.properties.contains(.indicate)
+    }
+
+    @objc public func close() {
+        close(clearDevicePtr: false)
     }
 }
 

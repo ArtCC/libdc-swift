@@ -37,12 +37,16 @@ let package = Package(
             name: "LibDCBridge",
             dependencies: ["Clibdivecomputer"],
             path: "Sources/LibDCBridge",
-            sources: ["src/configuredc.c", "src/BLEBridge.m"],
+            sources: [
+                "src/configuredc.c",
+                "src/BLEBridge.m"
+            ],
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include"),
                 .headerSearchPath("../../libdivecomputer/include"),
-                .headerSearchPath("../../libdivecomputer/src")
+                .headerSearchPath("../../libdivecomputer/src"),
+                .define("OBJC_OLD_DISPATCH_PROTOTYPES", to: "1")
             ],
             linkerSettings: [
                 .linkedFramework("CoreBluetooth"),
@@ -66,7 +70,8 @@ let package = Package(
                 "DiveLogRetriever.swift"
             ],
             cSettings: [
-                .headerSearchPath("../LibDCBridge/include")
+                .headerSearchPath("../LibDCBridge/include"),
+                .headerSearchPath("../Clibdivecomputer/include")
             ],
             linkerSettings: [
                 .linkedFramework("CoreBluetooth"),

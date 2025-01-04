@@ -1,4 +1,6 @@
 import Foundation
+import Clibdivecomputer
+import LibDCBridge
 import SwiftUI
 
 public enum DiveEvent: Hashable {

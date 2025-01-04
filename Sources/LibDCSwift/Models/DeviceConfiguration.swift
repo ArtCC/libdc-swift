@@ -1,4 +1,5 @@
 import Foundation
+import CoreBluetooth
 import Clibdivecomputer
 import LibDCBridge
 
@@ -38,7 +39,6 @@ import LibDCBridge
             case .divesoftFreedom: return DC_FAMILY_DIVESOFT_FREEDOM
             case .cressiGoa: return DC_FAMILY_CRESSI_GOA
             case .diveSystem: return DC_FAMILY_DIVESYSTEM_IDIVE
-            case .maresIconHD: return DC_FAMILY_MARES_ICONHD
             }
         }
         
@@ -61,7 +61,6 @@ import LibDCBridge
             case DC_FAMILY_DIVESOFT_FREEDOM: self = .divesoftFreedom
             case DC_FAMILY_CRESSI_GOA: self = .cressiGoa
             case DC_FAMILY_DIVESYSTEM_IDIVE: self = .diveSystem
-            case DC_FAMILY_MARES_ICONHD: self = .maresIconHD
             default: return nil
             }
         }
@@ -118,10 +117,13 @@ import LibDCBridge
                 logDebug("Successfully opened device using stored configuration")
                 logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
                 DispatchQueue.main.async {
-                    CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                    if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
+                        manager.openedDeviceDataPtr = deviceData
+                    }
                 }
                 return true
             }
+            
             logDebug("Failed to open with stored config (status: \(openStatus)), falling back to identification")
         }
         
@@ -138,7 +140,9 @@ import LibDCBridge
                 logDebug("Successfully opened device with descriptor configuration")
                 logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
                 DispatchQueue.main.async {
-                    CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                    if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
+                        manager.openedDeviceDataPtr = deviceData
+                    }
                 }
                 return true
             }
@@ -173,7 +177,9 @@ import LibDCBridge
             logDebug("Successfully opened device with new configuration")
             logDebug("Device data pointer allocated at: \(String(describing: deviceData))")
             DispatchQueue.main.async {
-                CoreBluetoothManager.shared.openedDeviceDataPtr = deviceData
+                if let manager = CoreBluetoothManager.shared() as? CoreBluetoothManager {
+                    manager.openedDeviceDataPtr = deviceData
+                }
             }
             return true
         } else {

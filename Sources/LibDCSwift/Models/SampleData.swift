@@ -1,4 +1,6 @@
 import Foundation
+import Clibdivecomputer
+import LibDCBridge
 
 public struct SampleData {
     // Basic dive data
