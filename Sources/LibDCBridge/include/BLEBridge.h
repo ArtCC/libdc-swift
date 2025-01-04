@@ -44,19 +44,6 @@ typedef struct ble_object {
     void* manager;
 } ble_object_t;
 
-// Device identification function
-dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
-dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
-
-// Parser creation functions
-dc_status_t suunto_eonsteel_parser_create(dc_parser_t **parser, dc_context_t *context, 
-                                        const unsigned char *data, size_t size, 
-                                        unsigned int devtime);
-dc_status_t shearwater_petrel_parser_create(dc_parser_t **parser, dc_context_t *context, 
-                                          const unsigned char *data, size_t size);
-dc_status_t shearwater_predator_parser_create(dc_parser_t **parser, dc_context_t *context, 
-                                            const unsigned char *data, size_t size);
-
 // BLE object functions
 ble_object_t* createBLEObject(void);
 void freeBLEObject(ble_object_t* obj);
@@ -74,16 +61,5 @@ void initializeBLEManager(void);
 bool connectToBLEDevice(ble_object_t *io, const char *deviceAddress);
 bool discoverServices(ble_object_t *io);
 bool enableNotifications(ble_object_t *io);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model);
-dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* BLEBridge_h */

@@ -91,7 +91,6 @@ import LibDCBridge
     /// This function will try multiple methods to identify and connect to the device:
     /// 1. Use stored device information if available
     /// 2. Use descriptor system to identify device
-    /// 3. Fall back to libdivecomputer's identify_ble_device
     /// - Parameters:
     ///   - name: The advertised name of the BLE device
     ///   - deviceAddress: The device's UUID/MAC address
