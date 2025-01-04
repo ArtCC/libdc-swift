@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated DiveDataViewModel to maintain active download state
 - Modified ConnectedDeviceView to handle state restoration
+- Improved device name normalization using libdivecomputer's descriptor system
+- Removed manual device name parsing in favor of libdivecomputer's built-in filters
 
 ## [1.0.0] - 2025-01-03
 ### Added

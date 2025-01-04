@@ -397,29 +397,37 @@ dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor,
         return rc;
     }
 
-    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
-        bool matches = false;
-        
-        if (name != NULL) {
-            // Match by name
-            const char *product = dc_descriptor_get_product(descriptor);
-            if (product && strstr(name, product) != NULL) {
-                matches = true;
+    // If name is provided, try to match using descriptor filter
+    if (name != NULL) {
+        while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+            // Check if this descriptor supports BLE and matches the name
+            if (dc_descriptor_get_transports(descriptor) & DC_TRANSPORT_BLE &&
+                dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
+                *out_descriptor = descriptor;
+                dc_iterator_free(iterator);
+                return DC_STATUS_SUCCESS;
             }
-        } else {
-            // Match by family and model
+            dc_descriptor_free(descriptor);
+        }
+    }
+
+    // Fall back to family/model matching if provided
+    if (family != DC_FAMILY_NULL) {
+        dc_iterator_free(iterator);
+        rc = dc_descriptor_iterator(&iterator);
+        if (rc != DC_STATUS_SUCCESS) {
+            return rc;
+        }
+
+        while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
             if (dc_descriptor_get_type(descriptor) == family &&
                 dc_descriptor_get_model(descriptor) == model) {
-                matches = true;
+                *out_descriptor = descriptor;
+                dc_iterator_free(iterator);
+                return DC_STATUS_SUCCESS;
             }
+            dc_descriptor_free(descriptor);
         }
-        
-        if (matches) {
-            *out_descriptor = descriptor;
-            dc_iterator_free(iterator);
-            return DC_STATUS_SUCCESS;
-        }
-        dc_descriptor_free(descriptor);
     }
 
     dc_iterator_free(iterator);

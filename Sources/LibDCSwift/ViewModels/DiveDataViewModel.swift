@@ -63,39 +63,29 @@ public class DiveDataViewModel: ObservableObject {
     }
     
     /// Normalizes a device type string for consistent comparison
-    /// Uses libdivecomputer's descriptor system when possible, falls back to string parsing
+    /// Uses libdivecomputer's descriptor system and filter matching
     /// - Parameter deviceType: The device type string to normalize
     /// - Returns: Normalized device type string
     private func normalizeDeviceType(_ deviceType: String) -> String {
-        // Try to find matching descriptor from libdivecomputer
+        // Try to find matching descriptor using libdivecomputer's filter system
         var descriptor: OpaquePointer?
         let status = find_matching_descriptor(
             &descriptor,
-            DC_FAMILY_NULL, // Use null family to match by name only
-            0,             // Model 0 to match by name only
-            deviceType     // Device name to match
+            DC_FAMILY_NULL,
+            0,
+            deviceType.cString(using: .utf8)
         )
         
-        // If we found a matching descriptor, use its product name
         if status == DC_STATUS_SUCCESS,
            let desc = descriptor,
+           let vendor = dc_descriptor_get_vendor(desc),
            let product = dc_descriptor_get_product(desc) {
-            let normalizedName = String(cString: product)
+            let normalizedName = "\(String(cString: vendor)) \(String(cString: product))" // Use vendor and product name from descriptor
             dc_descriptor_free(desc)
             return normalizedName
         }
         
-        // If no match found, fall back to basic string parsing
-        let components = deviceType.split(separator: " ")
-        if components.count == 1 {
-            return String(components[0])
-        }
-        
-        // Remove any serial numbers or identifiers (typically numeric)
-        let nonNumericComponents = components.filter { !$0.allSatisfy { $0.isNumber } }
-        if let modelName = nonNumericComponents.last {
-            return String(modelName)
-        }
+        // If no match found, return original name
         return deviceType
     }
     

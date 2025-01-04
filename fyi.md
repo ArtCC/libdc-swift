@@ -15,6 +15,20 @@ This codebase implements a Bluetooth Low Energy (BLE) application for communicat
 
 ## Key Features
 
+### Device Name Normalization
+The system uses libdivecomputer's built-in descriptor and filter system for device name normalization:
+
+1. Device Matching Process:
+   - Uses `dc_descriptor_filter()` to match BLE device names
+   - Leverages libdivecomputer's manufacturer-specific filters
+   - Returns standardized vendor/product names from descriptor database
+
+2. Benefits:
+   - Consistent device naming across the application
+   - Handles manufacturer-specific naming patterns automatically
+   - Maintains compatibility with libdivecomputer's device database
+   - Auto-supports new devices as they're added to libdivecomputer
+
 ### Fingerprint Implementation
 
 The fingerprint system in libdivecomputer is used to identify previously downloaded dives and optimize subsequent downloads. The fingerprint represents the last downloaded dive's identifier, which is used to skip all dives up to that point in the next download. Here's how it works:
