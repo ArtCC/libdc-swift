@@ -402,7 +402,6 @@ dc_status_t find_descriptor_by_model(dc_descriptor_t **out_descriptor,
         return rc;
     }
 
-    printf("🔍 Attempting exact match - Family: %d, Model: %u\n", family, model);
     while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
         if (dc_descriptor_get_type(descriptor) == family &&
             dc_descriptor_get_model(descriptor) == model) {
@@ -463,7 +462,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
     dc_descriptor_t *descriptor = NULL;
     dc_status_t rc;
 
-    printf("🔍 Attempting to match device name: %s\n", name);
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
         printf("❌ Failed to create descriptor iterator: %d\n", rc);
@@ -480,11 +478,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
             
             // Check if the product name appears in the device name
             if (product && strstr(name, product) != NULL) {
-                printf("✅ Found matching descriptor - Vendor: %s, Product: %s, Family: %d, Model: %u\n",
-                    vendor ? vendor : "Unknown",
-                    product ? product : "Unknown",
-                    family,
-                    model);
                 *out_descriptor = descriptor;
                 dc_iterator_free(iterator);
                 return DC_STATUS_SUCCESS;
