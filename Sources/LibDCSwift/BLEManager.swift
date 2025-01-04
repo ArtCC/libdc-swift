@@ -441,7 +441,7 @@ public class CoreBluetoothManager: NSObject, CoreBluetoothManagerProtocol, Obser
             // 2. It's a supported device
             // 3. We haven't already added it
             if DeviceStorage.shared.getStoredDevice(uuid: peripheral.identifier.uuidString) != nil ||
-               DeviceConfiguration.identifyDevice(name: peripheral.name ?? "") != nil {
+               DeviceConfiguration.fromName(peripheral.name ?? "") != nil {
                 addDiscoveredPeripheral(peripheral)
             }
         }

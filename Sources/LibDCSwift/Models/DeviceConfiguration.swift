@@ -135,14 +135,19 @@ import LibDCBridge
     /// Identifies a BLE device from its name using libdivecomputer's descriptor system
     /// - Parameter name: The device name to identify
     /// - Returns: A tuple containing the device family and model number, or nil if not identified
-    public static func identifyDevice(name: String) -> (family: DeviceFamily, model: UInt32)? {
-        var family: dc_family_t = DC_FAMILY_NULL
-        var model: UInt32 = 0
+    public static func fromName(_ name: String) -> (family: DeviceFamily, model: UInt32)? {
+        var descriptor: OpaquePointer?
         
-        let status = get_device_info_from_name(name, &family, &model)
-        if status == DC_STATUS_SUCCESS,
-           let deviceFamily = DeviceFamily(dcFamily: family) {
-            return (deviceFamily, model)
+        let rc = find_descriptor_by_name(&descriptor, name)
+        if rc == DC_STATUS_SUCCESS,
+           let desc = descriptor {
+            let family = dc_descriptor_get_type(desc)
+            let model = dc_descriptor_get_model(desc)
+            if let deviceFamily = DeviceFamily(dcFamily: family) {
+                dc_descriptor_free(desc)
+                return (deviceFamily, model)
+            }
+            dc_descriptor_free(desc)
         }
         return nil
     }

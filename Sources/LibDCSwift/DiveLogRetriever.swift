@@ -84,7 +84,7 @@ public class DiveLogRetriever {
         }
         
         // Always process dive when no fingerprint or no match found
-        if let deviceInfo = DeviceConfiguration.identifyDevice(name: context.deviceName) {
+        if let deviceInfo = DeviceConfiguration.fromName(context.deviceName) {
             do {
                 let diveData = try GenericParser.parseDiveData(
                     family: deviceInfo.family,
