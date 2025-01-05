@@ -457,37 +457,155 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
  * @return: DC_STATUS_SUCCESS on success, error code otherwise
  * @note: Caller must free the returned descriptor when done
  *------------------------------------------------------------------*/
+struct name_pattern {
+    const char *prefix;
+    const char *vendor;
+    const char *product;
+    enum {
+        MATCH_EXACT,    // Full string match
+        MATCH_PREFIX,   // Prefix match only
+        MATCH_CONTAINS  // Substring match
+    } match_type;
+};
+
+// Define known name patterns - order matters, more specific patterns first
+static const struct name_pattern name_patterns[] = {
+    // Shearwater dive computers
+    { "Predator", "Shearwater", "Predator", MATCH_EXACT },
+    { "Perdix 2", "Shearwater", "Perdix 2", MATCH_EXACT },
+    { "Petrel 3", "Shearwater", "Petrel 3", MATCH_EXACT },
+    { "Petrel", "Shearwater", "Petrel 2", MATCH_EXACT },  // Both Petrel and Petrel 2 identify as "Petrel"
+    { "Perdix", "Shearwater", "Perdix", MATCH_EXACT },
+    { "Teric", "Shearwater", "Teric", MATCH_EXACT },
+    { "Peregrine", "Shearwater", "Peregrine", MATCH_EXACT },
+    { "NERD 2", "Shearwater", "NERD 2", MATCH_EXACT },
+    { "NERD", "Shearwater", "NERD", MATCH_EXACT },
+    { "Tern", "Shearwater", "Tern", MATCH_EXACT },
+    
+    // Suunto dive computers - order matters! 
+    { "EON Steel", "Suunto", "EON Steel", MATCH_EXACT },
+    { "Suunto D5", "Suunto", "D5", MATCH_EXACT }, 
+    { "EON Core", "Suunto", "EON Core", MATCH_EXACT },
+    
+    // Scubapro dive computers
+    { "G2", "Scubapro", "G2", MATCH_EXACT },
+    { "HUD", "Scubapro", "G2 HUD", MATCH_EXACT },
+    { "G3", "Scubapro", "G3", MATCH_EXACT },
+    { "Aladin", "Scubapro", "Aladin Sport Matrix", MATCH_EXACT },
+    { "A1", "Scubapro", "Aladin A1", MATCH_EXACT },
+    { "A2", "Scubapro", "Aladin A2", MATCH_EXACT },
+    { "Luna 2.0 AI", "Scubapro", "Luna 2.0 AI", MATCH_EXACT },
+    { "Luna 2.0", "Scubapro", "Luna 2.0", MATCH_EXACT },
+    
+    // Mares dive computers
+    { "Mares Genius", "Mares", "Genius", MATCH_EXACT },
+    { "Sirius", "Mares", "Sirius", MATCH_EXACT },
+    { "Quad Ci", "Mares", "Quad Ci", MATCH_EXACT },
+    { "Puck4", "Mares", "Puck 4", MATCH_EXACT },
+    
+    // Cressi dive computers - use prefix matching
+    { "CARESIO_", "Cressi", "Cartesio", MATCH_PREFIX },
+    { "GOA_", "Cressi", "Goa", MATCH_PREFIX },
+    { "Leonardo", "Cressi", "Leonardo 2.0", MATCH_CONTAINS },
+    { "Donatello", "Cressi", "Donatello", MATCH_CONTAINS },
+    { "Michelangelo", "Cressi", "Michelangelo", MATCH_CONTAINS },
+    { "Neon", "Cressi", "Neon", MATCH_CONTAINS },
+    { "Nepto", "Cressi", "Nepto", MATCH_CONTAINS },
+    
+    // Heinrichs Weikamp dive computers
+    { "OSTC 3", "Heinrichs Weikamp", "OSTC Plus", MATCH_EXACT },
+    { "OSTC s#", "Heinrichs Weikamp", "OSTC Sport", MATCH_EXACT },
+    { "OSTC s ", "Heinrichs Weikamp", "OSTC Sport", MATCH_EXACT },
+    { "OSTC 4-", "Heinrichs Weikamp", "OSTC 4", MATCH_EXACT },
+    { "OSTC 2-", "Heinrichs Weikamp", "OSTC 2N", MATCH_EXACT },
+    { "OSTC + ", "Heinrichs Weikamp", "OSTC 2", MATCH_EXACT },
+    { "OSTC", "Heinrichs Weikamp", "OSTC 2", MATCH_EXACT },  
+    
+    // Deepblu dive computers
+    { "COSMIQ", "Deepblu", "Cosmiq+", MATCH_EXACT },
+    
+    // Oceans dive computers
+    { "S1", "Oceans", "S1", MATCH_EXACT },
+    
+    // McLean dive computers
+    { "McLean Extreme", "McLean", "Extreme", MATCH_EXACT },
+    
+    // Tecdiving dive computers
+    { "DiveComputer", "Tecdiving", "DiveComputer.eu", MATCH_EXACT },
+    
+    // Ratio dive computers
+    { "DS", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT },
+    { "IX5M", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT },
+    { "RATIO-", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT }
+};
+
 dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char *name) {
     dc_iterator_t *iterator = NULL;
     dc_descriptor_t *descriptor = NULL;
     dc_status_t rc;
 
     printf("🔍 Looking for device with name: %s\n", name);
+
+    // First try to match against known patterns
+    for (size_t i = 0; i < sizeof(name_patterns)/sizeof(name_patterns[0]); i++) {
+        bool matches = false;
+        
+        switch (name_patterns[i].match_type) {
+            case MATCH_EXACT:
+                matches = (strstr(name, name_patterns[i].prefix) != NULL);
+                break;
+            case MATCH_PREFIX:
+                matches = (strncmp(name, name_patterns[i].prefix, 
+                    strlen(name_patterns[i].prefix)) == 0);
+                break;
+            case MATCH_CONTAINS:
+                matches = (strstr(name, name_patterns[i].prefix) != NULL);
+                break;
+        }
+
+        if (matches) {
+            // Create iterator to find matching descriptor
+            rc = dc_descriptor_iterator(&iterator);
+            if (rc != DC_STATUS_SUCCESS) {
+                printf("❌ Failed to create descriptor iterator: %d\n", rc);
+                return rc;
+            }
+
+            while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+                const char *vendor = dc_descriptor_get_vendor(descriptor);
+                const char *product = dc_descriptor_get_product(descriptor);
+
+                if (vendor && product && 
+                    strcmp(vendor, name_patterns[i].vendor) == 0 &&
+                    strcmp(product, name_patterns[i].product) == 0) {
+                    
+                    printf("✅ Found exact pattern match - Vendor: %s, Product: %s\n",
+                        vendor, product);
+                    *out_descriptor = descriptor;
+                    dc_iterator_free(iterator);
+                    return DC_STATUS_SUCCESS;
+                }
+                dc_descriptor_free(descriptor);
+            }
+            dc_iterator_free(iterator);
+        }
+    }
+
+    // Fall back to filter-based matching if no pattern match found
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
-        printf("❌ Failed to create descriptor iterator: %d\n", rc);
         return rc;
     }
 
     while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
         unsigned int transports = dc_descriptor_get_transports(descriptor);
-        const char *vendor = dc_descriptor_get_vendor(descriptor);
-        const char *product = dc_descriptor_get_product(descriptor);
         
-        printf("  👉 Checking descriptor - Vendor: %s, Product: %s\n", 
-            vendor ? vendor : "Unknown", 
-            product ? product : "Unknown");
-            
         if ((transports & DC_TRANSPORT_BLE) && 
             dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
-            unsigned int model = dc_descriptor_get_model(descriptor);
-            dc_family_t family = dc_descriptor_get_type(descriptor);
             
-            printf("✅ Found matching descriptor - Vendor: %s, Product: %s (Model: %u), Family: %d\n",
-                vendor ? vendor : "Unknown",
-                product ? product : "Unknown",
-                model,
-                family);
+            printf("✅ Found filter match - Vendor: %s, Product: %s\n",
+                dc_descriptor_get_vendor(descriptor),
+                dc_descriptor_get_product(descriptor));
             *out_descriptor = descriptor;
             dc_iterator_free(iterator);
             return DC_STATUS_SUCCESS;
