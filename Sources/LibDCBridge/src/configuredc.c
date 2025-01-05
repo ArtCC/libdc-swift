@@ -460,7 +460,6 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
 dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char *name) {
     dc_iterator_t *iterator = NULL;
     dc_descriptor_t *descriptor = NULL;
-    dc_descriptor_t *best_match = NULL;
     dc_status_t rc;
 
     printf("🔍 Looking for device with name: %s\n", name);
@@ -481,55 +480,19 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
             
         if ((transports & DC_TRANSPORT_BLE) && 
             dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
+            unsigned int model = dc_descriptor_get_model(descriptor);
             dc_family_t family = dc_descriptor_get_type(descriptor);
             
-            // For devices that use model numbers or specific prefixes, trust the filter completely
-            if (family == DC_FAMILY_CRESSI_GOA ||          // Uses model numbers (e.g., "2_")
-                family == DC_FAMILY_MARES_ICONHD ||        // Uses "BLNK" prefix
-                family == DC_FAMILY_OCEANIC_ATOM2 ||       // Uses brand prefixes
-                family == DC_FAMILY_HW_OSTC3) {            // Uses "OSTC"/"FROG" prefixes
-                if (best_match) {
-                    dc_descriptor_free(best_match);
-                }
-                best_match = descriptor;
-                break;  // First match is the correct one for these devices
-            }
-            
-            // For devices that use product names (like Suunto, Shearwater), prefer exact matches
-            if (product && strstr(name, product) != NULL) {
-                if (best_match) {
-                    dc_descriptor_free(best_match);
-                }
-                best_match = descriptor;
-                continue;
-            }
-            
-            // Otherwise keep the first match if we don't have one yet
-            if (!best_match) {
-                best_match = descriptor;
-                continue;
-            }
-            
-            dc_descriptor_free(descriptor);
-        } else {
-            dc_descriptor_free(descriptor);
+            printf("✅ Found matching descriptor - Vendor: %s, Product: %s (Model: %u), Family: %d\n",
+                vendor ? vendor : "Unknown",
+                product ? product : "Unknown",
+                model,
+                family);
+            *out_descriptor = descriptor;
+            dc_iterator_free(iterator);
+            return DC_STATUS_SUCCESS;
         }
-    }
-
-    if (best_match) {
-        const char *vendor = dc_descriptor_get_vendor(best_match);
-        const char *product = dc_descriptor_get_product(best_match);
-        unsigned int model = dc_descriptor_get_model(best_match);
-        dc_family_t family = dc_descriptor_get_type(best_match);
-        
-        printf("✅ Found matching descriptor - Vendor: %s, Product: %s (Model: %u), Family: %d\n",
-            vendor ? vendor : "Unknown",
-            product ? product : "Unknown",
-            model,
-            family);
-        *out_descriptor = best_match;
-        dc_iterator_free(iterator);
-        return DC_STATUS_SUCCESS;
+        dc_descriptor_free(descriptor);
     }
 
     printf("❌ No matching descriptor found\n");
