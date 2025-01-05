@@ -477,11 +477,11 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
             unsigned int model = dc_descriptor_get_model(descriptor);
             dc_family_t family = dc_descriptor_get_type(descriptor);
             
-            printf("✅ Found matching descriptor - Vendor: %s, Product: %s, Family: %d, Model: %u\n",
+            printf("✅ Found matching descriptor - Vendor: %s, Product: %s (Model: %u), Family: %d\n",
                 vendor ? vendor : "Unknown",
                 product ? product : "Unknown",
-                family,
-                model);
+                model,
+                family);
             *out_descriptor = descriptor;
             dc_iterator_free(iterator);
             return DC_STATUS_SUCCESS;
