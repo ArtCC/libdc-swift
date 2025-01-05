@@ -482,7 +482,7 @@ static const struct name_pattern name_patterns[] = {
     { "NERD", "Shearwater", "NERD", MATCH_EXACT },
     { "Tern", "Shearwater", "Tern", MATCH_EXACT },
     
-    // Suunto dive computers - order matters! 
+    // Suunto dive computers 
     { "EON Steel", "Suunto", "EON Steel", MATCH_EXACT },
     { "Suunto D5", "Suunto", "D5", MATCH_EXACT }, 
     { "EON Core", "Suunto", "EON Core", MATCH_EXACT },
@@ -544,8 +544,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
     dc_descriptor_t *descriptor = NULL;
     dc_status_t rc;
 
-    printf("🔍 Looking for device with name: %s\n", name);
-
     // First try to match against known patterns
     for (size_t i = 0; i < sizeof(name_patterns)/sizeof(name_patterns[0]); i++) {
         bool matches = false;
@@ -578,9 +576,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
                 if (vendor && product && 
                     strcmp(vendor, name_patterns[i].vendor) == 0 &&
                     strcmp(product, name_patterns[i].product) == 0) {
-                    
-                    printf("✅ Found exact pattern match - Vendor: %s, Product: %s\n",
-                        vendor, product);
                     *out_descriptor = descriptor;
                     dc_iterator_free(iterator);
                     return DC_STATUS_SUCCESS;
@@ -602,10 +597,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
         
         if ((transports & DC_TRANSPORT_BLE) && 
             dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
-            
-            printf("✅ Found filter match - Vendor: %s, Product: %s\n",
-                dc_descriptor_get_vendor(descriptor),
-                dc_descriptor_get_product(descriptor));
             *out_descriptor = descriptor;
             dc_iterator_free(iterator);
             return DC_STATUS_SUCCESS;
@@ -613,7 +604,6 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
         dc_descriptor_free(descriptor);
     }
 
-    printf("❌ No matching descriptor found\n");
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
 }
