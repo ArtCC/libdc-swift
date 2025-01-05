@@ -462,6 +462,7 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
     dc_descriptor_t *descriptor = NULL;
     dc_status_t rc;
 
+    printf("🔍 Looking for device with name: %s\n", name);
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
         printf("❌ Failed to create descriptor iterator: %d\n", rc);
@@ -470,10 +471,15 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
 
     while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
         unsigned int transports = dc_descriptor_get_transports(descriptor);
+        const char *vendor = dc_descriptor_get_vendor(descriptor);
+        const char *product = dc_descriptor_get_product(descriptor);
+        
+        printf("  👉 Checking descriptor - Vendor: %s, Product: %s\n", 
+            vendor ? vendor : "Unknown", 
+            product ? product : "Unknown");
+            
         if ((transports & DC_TRANSPORT_BLE) && 
             dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
-            const char *vendor = dc_descriptor_get_vendor(descriptor);
-            const char *product = dc_descriptor_get_product(descriptor);
             unsigned int model = dc_descriptor_get_model(descriptor);
             dc_family_t family = dc_descriptor_get_type(descriptor);
             
@@ -489,6 +495,7 @@ dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char
         dc_descriptor_free(descriptor);
     }
 
+    printf("❌ No matching descriptor found\n");
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
 }
