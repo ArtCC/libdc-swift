@@ -247,9 +247,7 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
                     dc_device_set_fingerprint(device, fingerprint, fsize);
                     devdata->fingerprint = fingerprint;
                     devdata->fsize = fsize;
-                } else {
-                    printf("No fingerprint found\n");
-                }
+                } 
             }
         }
         break;

@@ -70,9 +70,9 @@ public class DiveLogRetriever {
         
         let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
         if context.viewModel.progress == .cancelled || 
-           context.bluetoothManager?.isRetrievingLogs == false {
+        context.bluetoothManager?.isRetrievingLogs == false {
             logInfo("🛑 Download cancelled - stopping enumeration")
-            return 0
+            return 1  
         }
         
         // Get device info if we don't have it yet
@@ -175,7 +175,7 @@ public class DiveLogRetriever {
         
         let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
         if context.isCancelled || 
-           context.bluetoothManager?.isRetrievingLogs == false {
+        context.bluetoothManager?.isRetrievingLogs == false {
             return 1 // Return 1 to indicate cancellation
         }
         return 0
