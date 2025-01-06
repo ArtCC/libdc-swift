@@ -38,7 +38,6 @@ public class DiveLogRetriever {
         }
         
         public func waitForCompletion() {
-            // Wait for the foreach operation to complete
             while !isCompleted && !isCancelled {
                 Thread.sleep(forTimeInterval: 0.1)
             }
@@ -69,10 +68,11 @@ public class DiveLogRetriever {
         }
         
         let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
-        if context.viewModel.progress == .cancelled || 
-        context.bluetoothManager?.isRetrievingLogs == false {
-            logInfo("🛑 Download cancelled - stopping enumeration")
-            return 1  
+        
+        // Check for cancellation
+        if context.isCancelled {
+            logInfo("🛑 Download cancelled in dive callback - stopping enumeration")
+            return 0  // Return 0 to stop enumeration
         }
         
         // Get device info if we don't have it yet
@@ -169,16 +169,16 @@ public class DiveLogRetriever {
         return nil
     }
     
-    /// C callback for cancellation
+    /// C callback for cancellation - called by libdivecomputer to check if operation should be cancelled
     private static let cancelCallback: @convention(c) (UnsafeMutableRawPointer?) -> Int32 = { userdata in
         guard let userdata = userdata else { return 0 }
         
         let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
-        if context.isCancelled || 
-        context.bluetoothManager?.isRetrievingLogs == false {
-            return 1 // Return 1 to indicate cancellation
+        if context.isCancelled {
+            logInfo("🛑 Cancel callback triggered - stopping enumeration")
+            return 1  // Return 1 to tell libdivecomputer to cancel
         }
-        return 0
+        return 0  // Return 0 to continue
     }
     
     private static var currentContext: CallbackContext?
@@ -262,7 +262,7 @@ public class DiveLogRetriever {
             devicePtr.pointee.fingerprint_context = Unmanaged.passUnretained(viewModel).toOpaque()
             devicePtr.pointee.lookup_fingerprint = fingerprintLookup
             
-            // Setup cancellation callback
+            // Set up cancellation callback
             dc_device_set_cancel(dcDevice, cancelCallback, contextPtr)
             
             logInfo("🔄 Starting dive enumeration...")
@@ -270,7 +270,13 @@ public class DiveLogRetriever {
             
             progressTimer.invalidate()
             DispatchQueue.main.async {
-                if enumStatus == DC_STATUS_SUCCESS {
+                if context.isCancelled {
+                    viewModel.setDetailedError("Download cancelled", status: DC_STATUS_CANCELLED)
+                    completion(false)
+                } else if enumStatus != DC_STATUS_SUCCESS {
+                    viewModel.setDetailedError("Download incomplete", status: enumStatus)
+                    completion(false)
+                } else {
                     if context.hasNewDives {
                         if let lastFingerprint = context.lastFingerprint,
                            let deviceSerial = context.deviceSerial {
@@ -291,10 +297,6 @@ public class DiveLogRetriever {
                         viewModel.updateProgress(.completed)
                         completion(true)
                     }
-                } else {
-                    logError("❌ Download failed or was interrupted")
-                    viewModel.setDetailedError("Download incomplete", status: enumStatus)
-                    completion(false)
                 }
                 
                 context.isCompleted = true
