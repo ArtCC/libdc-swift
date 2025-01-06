@@ -262,7 +262,7 @@ public class DiveLogRetriever {
             devicePtr.pointee.fingerprint_context = Unmanaged.passUnretained(viewModel).toOpaque()
             devicePtr.pointee.lookup_fingerprint = fingerprintLookup
             
-            // Set up cancellation callback
+            // Setup cancellation callback
             dc_device_set_cancel(dcDevice, cancelCallback, contextPtr)
             
             logInfo("🔄 Starting dive enumeration...")

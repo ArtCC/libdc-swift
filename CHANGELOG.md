@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improved device name normalization using libdivecomputer's descriptor system
 - Removed manual device name parsing in favor of libdivecomputer's built-in filters
+- Added cancellation callback to allow cancelling dive log retrieval
 
 ## [1.2.1] - 2025-01-04
 ### Changed
