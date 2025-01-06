@@ -15,7 +15,6 @@ public class DiveLogRetriever {
         var lastFingerprint: Data?
         let deviceName: String
         var deviceSerial: String?
-        var isCancelled: Bool = false
         var hasNewDives: Bool = false
         weak var bluetoothManager: CoreBluetoothManager?
         var devicePtr: UnsafeMutablePointer<device_data_t>?
@@ -28,19 +27,6 @@ public class DiveLogRetriever {
             self.deviceName = deviceName
             self.storedFingerprint = storedFingerprint
             self.bluetoothManager = bluetoothManager
-        }
-        
-        public func cancel() {
-            isCancelled = true
-            DispatchQueue.main.async { [self] in
-                self.viewModel.setDetailedError("Download cancelled", status: DC_STATUS_CANCELLED)
-            }
-        }
-        
-        public func waitForCompletion() {
-            while !isCompleted && !isCancelled {
-                Thread.sleep(forTimeInterval: 0.1)
-            }
         }
     }
 
@@ -69,10 +55,10 @@ public class DiveLogRetriever {
         
         let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
         
-        // Check for cancellation
-        if context.isCancelled {
-            logInfo("🛑 Download cancelled in dive callback - stopping enumeration")
-            return 0  // Return 0 to stop enumeration
+        // Only check isRetrievingLogs because we're relying on clearRetrievalState
+        if context.bluetoothManager?.isRetrievingLogs == false {
+            logInfo("🛑 Download cancelled - stopping enumeration")
+            return 0  // Stop enumeration
         }
         
         // Get device info if we don't have it yet
@@ -169,18 +155,6 @@ public class DiveLogRetriever {
         return nil
     }
     
-    /// C callback for cancellation - called by libdivecomputer to check if operation should be cancelled
-    private static let cancelCallback: @convention(c) (UnsafeMutableRawPointer?) -> Int32 = { userdata in
-        guard let userdata = userdata else { return 0 }
-        
-        let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
-        if context.isCancelled {
-            logInfo("🛑 Cancel callback triggered - stopping enumeration")
-            return 1  // Return 1 to tell libdivecomputer to cancel
-        }
-        return 0  // Return 0 to continue
-    }
-    
     private static var currentContext: CallbackContext?
     
     /// Retrieves dive logs from a connected dive computer.
@@ -262,18 +236,12 @@ public class DiveLogRetriever {
             devicePtr.pointee.fingerprint_context = Unmanaged.passUnretained(viewModel).toOpaque()
             devicePtr.pointee.lookup_fingerprint = fingerprintLookup
             
-            // Set up cancellation callback
-            dc_device_set_cancel(dcDevice, cancelCallback, contextPtr)
-            
             logInfo("🔄 Starting dive enumeration...")
             let enumStatus = dc_device_foreach(dcDevice, diveCallbackClosure, contextPtr)
             
             progressTimer.invalidate()
             DispatchQueue.main.async {
-                if context.isCancelled {
-                    viewModel.setDetailedError("Download cancelled", status: DC_STATUS_CANCELLED)
-                    completion(false)
-                } else if enumStatus != DC_STATUS_SUCCESS {
+                if enumStatus != DC_STATUS_SUCCESS {
                     viewModel.setDetailedError("Download incomplete", status: enumStatus)
                     completion(false)
                 } else {
