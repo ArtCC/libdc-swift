@@ -267,9 +267,6 @@ static void event_cb(dc_device_t *device, dc_event_type_t event, const void *dat
 
 /*--------------------------------------------------------------------
  * Closes and frees resources associated with a device_data structure
- * 
- * @param data: Pointer to device_data_t structure to clean up
- * @note: Does not free the descriptor as it's managed by the caller
  *------------------------------------------------------------------*/
 static void close_device_data(device_data_t *data) {
     if (!data) return;
@@ -297,7 +294,6 @@ static void close_device_data(device_data_t *data) {
         dc_context_free(data->context);
         data->context = NULL;
     }
-    // The descriptor is freed by the caller
     data->descriptor = NULL;
 }
 
@@ -311,10 +307,11 @@ static void close_device_data(device_data_t *data) {
  * @return: DC_STATUS_SUCCESS on success, error code otherwise
  * @note: Takes ownership of the device_data_t structure
  *------------------------------------------------------------------*/
-dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *devaddr, dc_descriptor_t *descriptor) {
+dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model) {
     dc_status_t rc;
-    
-    if (!data || !devaddr || !descriptor) {
+    dc_descriptor_t *descriptor = NULL;
+
+    if (!data || !devaddr) {
         return DC_STATUS_INVALIDARGS;
     }
 
@@ -325,6 +322,14 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
     rc = dc_context_new(&data->context);
     if (rc != DC_STATUS_SUCCESS) {
         printf("Failed to create context, rc=%d\n", rc);
+        return rc;
+    }
+
+    // Get descriptor for the device
+    rc = find_descriptor_by_model(&descriptor, family, model);
+    if (rc != DC_STATUS_SUCCESS) {
+        printf("Failed to find descriptor, rc=%d\n", rc);
+        close_device_data(data);
         return rc;
     }
 
@@ -378,15 +383,14 @@ dc_status_t open_ble_device_with_descriptor(device_data_t *data, const char *dev
  * Helper function to find a matching device descriptor
  * 
  * @param out_descriptor: Output parameter for found descriptor
- * @param family:         Device family to match (ignored if name provided)
- * @param model:          Device model to match (ignored if name provided)
- * @param name:           Device name to match (takes precedence over family/model)
+ * @param family:         Device family to match
+ * @param model:          Device model to match
  * 
  * @return: DC_STATUS_SUCCESS on success, error code otherwise
  * @note: Caller must free the returned descriptor when done
  *------------------------------------------------------------------*/
-dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor, 
-    dc_family_t family, unsigned int model, const char *name) {
+dc_status_t find_descriptor_by_model(dc_descriptor_t **out_descriptor, 
+    dc_family_t family, unsigned int model) {
     
     dc_iterator_t *iterator = NULL;
     dc_descriptor_t *descriptor = NULL;
@@ -394,27 +398,13 @@ dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor,
 
     rc = dc_descriptor_iterator(&iterator);
     if (rc != DC_STATUS_SUCCESS) {
+        printf("❌ No matching descriptor found\n");
         return rc;
     }
 
     while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
-        bool matches = false;
-        
-        if (name != NULL) {
-            // Match by name
-            const char *product = dc_descriptor_get_product(descriptor);
-            if (product && strstr(name, product) != NULL) {
-                matches = true;
-            }
-        } else {
-            // Match by family and model
-            if (dc_descriptor_get_type(descriptor) == family &&
-                dc_descriptor_get_model(descriptor) == model) {
-                matches = true;
-            }
-        }
-        
-        if (matches) {
+        if (dc_descriptor_get_type(descriptor) == family &&
+            dc_descriptor_get_model(descriptor) == model) {
             *out_descriptor = descriptor;
             dc_iterator_free(iterator);
             return DC_STATUS_SUCCESS;
@@ -422,64 +412,9 @@ dc_status_t find_matching_descriptor(dc_descriptor_t **out_descriptor,
         dc_descriptor_free(descriptor);
     }
 
+    printf("❌ No matching descriptor found\n");
     dc_iterator_free(iterator);
     return DC_STATUS_UNSUPPORTED;
-}
-
-/*--------------------------------------------------------------------
- * Identifies a BLE device's family and model from its name
- * 
- * @param name:   Device name to identify
- * @param family: Output parameter for identified device family
- * @param model:  Output parameter for identified device model
- * 
- * @return: DC_STATUS_SUCCESS on success, error code otherwise
- *------------------------------------------------------------------*/
-dc_status_t identify_ble_device(const char* name, dc_family_t* family, unsigned int* model) {
-    dc_descriptor_t *descriptor = NULL;
-    dc_status_t rc;
-
-    rc = find_matching_descriptor(&descriptor, DC_FAMILY_NULL, 0, name);
-    if (rc != DC_STATUS_SUCCESS) {
-        return rc;
-    }
-
-    *family = (dc_family_t)dc_descriptor_get_type(descriptor);
-    *model = dc_descriptor_get_model(descriptor);
-    dc_descriptor_free(descriptor);
-    return DC_STATUS_SUCCESS;
-}
-
-/*--------------------------------------------------------------------
- * Opens a BLE device connection using family and model information
- * 
- * @param data:    Pointer to device_data_t to store device info
- * @param devaddr: BLE device address/UUID
- * @param family:  Device family identifier
- * @param model:   Device model identifier
- * 
- * @return: DC_STATUS_SUCCESS on success, error code otherwise
- *------------------------------------------------------------------*/
-dc_status_t open_ble_device(device_data_t *data, const char *devaddr, dc_family_t family, unsigned int model) {
-    dc_status_t rc;
-    dc_descriptor_t *descriptor = NULL;
-
-    if (!data->context) {
-        rc = dc_context_new(&data->context);
-        if (rc != DC_STATUS_SUCCESS) {
-            return rc;
-        }
-    }
-
-    rc = find_matching_descriptor(&descriptor, family, model, NULL);
-    if (rc != DC_STATUS_SUCCESS) {
-        return rc;
-    }
-
-    rc = open_ble_device_with_descriptor(data, devaddr, descriptor);
-    dc_descriptor_free(descriptor);
-
-    return rc;
 }
 
 /*--------------------------------------------------------------------
@@ -501,7 +436,7 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
     dc_status_t rc;
     dc_descriptor_t *descriptor = NULL;
 
-    rc = find_matching_descriptor(&descriptor, family, model, NULL);
+    rc = find_descriptor_by_model(&descriptor, family, model);
     if (rc != DC_STATUS_SUCCESS) {
         return rc;
     }
@@ -511,4 +446,268 @@ dc_status_t create_parser_for_device(dc_parser_t **parser, dc_context_t *context
     dc_descriptor_free(descriptor);
 
     return rc;
+}
+
+/*--------------------------------------------------------------------
+ * Helper function to find a matching BLE device descriptor by name
+ * 
+ * @param out_descriptor: Output parameter for found descriptor
+ * @param name:          Device name to match
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ * @note: Caller must free the returned descriptor when done
+ *------------------------------------------------------------------*/
+struct name_pattern {
+    const char *prefix;
+    const char *vendor;
+    const char *product;
+    enum {
+        MATCH_EXACT,    // Full string match
+        MATCH_PREFIX,   // Prefix match only
+        MATCH_CONTAINS  // Substring match
+    } match_type;
+};
+
+// Define known name patterns - order matters, more specific patterns first
+static const struct name_pattern name_patterns[] = {
+    // Shearwater dive computers
+    { "Predator", "Shearwater", "Predator", MATCH_EXACT },
+    { "Perdix 2", "Shearwater", "Perdix 2", MATCH_EXACT },
+    { "Petrel 3", "Shearwater", "Petrel 3", MATCH_EXACT },
+    { "Petrel", "Shearwater", "Petrel 2", MATCH_EXACT },  // Both Petrel and Petrel 2 identify as "Petrel"
+    { "Perdix", "Shearwater", "Perdix", MATCH_EXACT },
+    { "Teric", "Shearwater", "Teric", MATCH_EXACT },
+    { "Peregrine", "Shearwater", "Peregrine", MATCH_EXACT },
+    { "NERD 2", "Shearwater", "NERD 2", MATCH_EXACT },
+    { "NERD", "Shearwater", "NERD", MATCH_EXACT },
+    { "Tern", "Shearwater", "Tern", MATCH_EXACT },
+    
+    // Suunto dive computers 
+    { "EON Steel", "Suunto", "EON Steel", MATCH_EXACT },
+    { "Suunto D5", "Suunto", "D5", MATCH_EXACT }, 
+    { "EON Core", "Suunto", "EON Core", MATCH_EXACT },
+    
+    // Scubapro dive computers
+    { "G2", "Scubapro", "G2", MATCH_EXACT },
+    { "HUD", "Scubapro", "G2 HUD", MATCH_EXACT },
+    { "G3", "Scubapro", "G3", MATCH_EXACT },
+    { "Aladin", "Scubapro", "Aladin Sport Matrix", MATCH_EXACT },
+    { "A1", "Scubapro", "Aladin A1", MATCH_EXACT },
+    { "A2", "Scubapro", "Aladin A2", MATCH_EXACT },
+    { "Luna 2.0 AI", "Scubapro", "Luna 2.0 AI", MATCH_EXACT },
+    { "Luna 2.0", "Scubapro", "Luna 2.0", MATCH_EXACT },
+    
+    // Mares dive computers
+    { "Mares Genius", "Mares", "Genius", MATCH_EXACT },
+    { "Sirius", "Mares", "Sirius", MATCH_EXACT },
+    { "Quad Ci", "Mares", "Quad Ci", MATCH_EXACT },
+    { "Puck4", "Mares", "Puck 4", MATCH_EXACT },
+    
+    // Cressi dive computers - use prefix matching
+    { "CARESIO_", "Cressi", "Cartesio", MATCH_PREFIX },
+    { "GOA_", "Cressi", "Goa", MATCH_PREFIX },
+    { "Leonardo", "Cressi", "Leonardo 2.0", MATCH_CONTAINS },
+    { "Donatello", "Cressi", "Donatello", MATCH_CONTAINS },
+    { "Michelangelo", "Cressi", "Michelangelo", MATCH_CONTAINS },
+    { "Neon", "Cressi", "Neon", MATCH_CONTAINS },
+    { "Nepto", "Cressi", "Nepto", MATCH_CONTAINS },
+    
+    // Heinrichs Weikamp dive computers
+    { "OSTC 3", "Heinrichs Weikamp", "OSTC Plus", MATCH_EXACT },
+    { "OSTC s#", "Heinrichs Weikamp", "OSTC Sport", MATCH_EXACT },
+    { "OSTC s ", "Heinrichs Weikamp", "OSTC Sport", MATCH_EXACT },
+    { "OSTC 4-", "Heinrichs Weikamp", "OSTC 4", MATCH_EXACT },
+    { "OSTC 2-", "Heinrichs Weikamp", "OSTC 2N", MATCH_EXACT },
+    { "OSTC + ", "Heinrichs Weikamp", "OSTC 2", MATCH_EXACT },
+    { "OSTC", "Heinrichs Weikamp", "OSTC 2", MATCH_EXACT },  
+    
+    // Deepblu dive computers
+    { "COSMIQ", "Deepblu", "Cosmiq+", MATCH_EXACT },
+    
+    // Oceans dive computers
+    { "S1", "Oceans", "S1", MATCH_EXACT },
+    
+    // McLean dive computers
+    { "McLean Extreme", "McLean", "Extreme", MATCH_EXACT },
+    
+    // Tecdiving dive computers
+    { "DiveComputer", "Tecdiving", "DiveComputer.eu", MATCH_EXACT },
+    
+    // Ratio dive computers
+    { "DS", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT },
+    { "IX5M", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT },
+    { "RATIO-", "Ratio", "iX3M 2021 GPS Easy", MATCH_EXACT }
+};
+
+dc_status_t find_descriptor_by_name(dc_descriptor_t **out_descriptor, const char *name) {
+    dc_iterator_t *iterator = NULL;
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+
+    // First try to match against known patterns
+    for (size_t i = 0; i < sizeof(name_patterns)/sizeof(name_patterns[0]); i++) {
+        bool matches = false;
+        
+        switch (name_patterns[i].match_type) {
+            case MATCH_EXACT:
+                matches = (strstr(name, name_patterns[i].prefix) != NULL);
+                break;
+            case MATCH_PREFIX:
+                matches = (strncmp(name, name_patterns[i].prefix, 
+                    strlen(name_patterns[i].prefix)) == 0);
+                break;
+            case MATCH_CONTAINS:
+                matches = (strstr(name, name_patterns[i].prefix) != NULL);
+                break;
+        }
+
+        if (matches) {
+            // Create iterator to find matching descriptor
+            rc = dc_descriptor_iterator(&iterator);
+            if (rc != DC_STATUS_SUCCESS) {
+                printf("❌ Failed to create descriptor iterator: %d\n", rc);
+                return rc;
+            }
+
+            while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+                const char *vendor = dc_descriptor_get_vendor(descriptor);
+                const char *product = dc_descriptor_get_product(descriptor);
+
+                if (vendor && product && 
+                    strcmp(vendor, name_patterns[i].vendor) == 0 &&
+                    strcmp(product, name_patterns[i].product) == 0) {
+                    *out_descriptor = descriptor;
+                    dc_iterator_free(iterator);
+                    return DC_STATUS_SUCCESS;
+                }
+                dc_descriptor_free(descriptor);
+            }
+            dc_iterator_free(iterator);
+        }
+    }
+
+    // Fall back to filter-based matching if no pattern match found
+    rc = dc_descriptor_iterator(&iterator);
+    if (rc != DC_STATUS_SUCCESS) {
+        return rc;
+    }
+
+    while ((rc = dc_iterator_next(iterator, &descriptor)) == DC_STATUS_SUCCESS) {
+        unsigned int transports = dc_descriptor_get_transports(descriptor);
+        
+        if ((transports & DC_TRANSPORT_BLE) && 
+            dc_descriptor_filter(descriptor, DC_TRANSPORT_BLE, name)) {
+            *out_descriptor = descriptor;
+            dc_iterator_free(iterator);
+            return DC_STATUS_SUCCESS;
+        }
+        dc_descriptor_free(descriptor);
+    }
+
+    dc_iterator_free(iterator);
+    return DC_STATUS_UNSUPPORTED;
+}
+
+/*--------------------------------------------------------------------
+ * Gets device family and model for a BLE device by name
+ * 
+ * @param name:   Device name to identify
+ * @param family: Output parameter for device family
+ * @param model:  Output parameter for device model
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ *------------------------------------------------------------------*/
+dc_status_t get_device_info_from_name(const char *name, dc_family_t *family, unsigned int *model) {
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+
+    rc = find_descriptor_by_name(&descriptor, name);
+    if (rc != DC_STATUS_SUCCESS) {
+        return rc;
+    }
+
+    *family = dc_descriptor_get_type(descriptor);
+    *model = dc_descriptor_get_model(descriptor);
+    dc_descriptor_free(descriptor);
+    return DC_STATUS_SUCCESS;
+}
+
+/*--------------------------------------------------------------------
+ * Gets formatted display name for a device (vendor + product)
+ * 
+ * @param name: Device name to match
+ * 
+ * @return: Formatted display name string (caller must free), or NULL if not found
+ *------------------------------------------------------------------*/
+char* get_formatted_device_name(const char *name) {
+    dc_descriptor_t *descriptor = NULL;
+    dc_status_t rc;
+    char *result = NULL;
+
+    rc = find_descriptor_by_name(&descriptor, name);
+    if (rc != DC_STATUS_SUCCESS) {
+        return NULL;
+    }
+
+    const char *vendor = dc_descriptor_get_vendor(descriptor);
+    const char *product = dc_descriptor_get_product(descriptor);
+    
+    if (vendor && product) {
+        size_t len = strlen(vendor) + strlen(product) + 2; // +2 for space and null terminator
+        result = (char*)malloc(len);
+        if (result) {
+            snprintf(result, len, "%s %s", vendor, product);
+        }
+    }
+
+    dc_descriptor_free(descriptor);
+    return result;
+}
+
+/*--------------------------------------------------------------------
+ * Helper function to open BLE device with stored or identified configuration
+ * 
+ * @param out_data: Output parameter for created device_data_t
+ * @param name:     Device name to match
+ * @param address:  BLE device address/UUID
+ * @param stored_family: Optional stored device family (pass DC_FAMILY_NULL if none)
+ * @param stored_model:  Optional stored device model (pass 0 if none)
+ * 
+ * @return: DC_STATUS_SUCCESS on success, error code otherwise
+ *------------------------------------------------------------------*/
+dc_status_t open_ble_device_with_identification(device_data_t **out_data, 
+    const char *name, const char *address,
+    dc_family_t stored_family, unsigned int stored_model) 
+{
+    device_data_t *data = (device_data_t*)calloc(1, sizeof(device_data_t));
+    if (!data) return DC_STATUS_NOMEMORY;
+    
+    dc_family_t family;
+    unsigned int model;
+    dc_status_t rc;
+    
+    // Try stored configuration first if provided
+    if (stored_family != DC_FAMILY_NULL && stored_model != 0) {
+        rc = open_ble_device(data, address, stored_family, stored_model);
+        if (rc == DC_STATUS_SUCCESS) {
+            *out_data = data;
+            return DC_STATUS_SUCCESS;
+        }
+    }
+    
+    // Fall back to identification if stored config failed or wasn't provided
+    rc = get_device_info_from_name(name, &family, &model);
+    if (rc != DC_STATUS_SUCCESS) {
+        free(data);
+        return rc;
+    }
+    
+    rc = open_ble_device(data, address, family, model);
+    if (rc != DC_STATUS_SUCCESS) {
+        free(data);
+        return rc;
+    }
+    
+    *out_data = data;
+    return DC_STATUS_SUCCESS;
 }
