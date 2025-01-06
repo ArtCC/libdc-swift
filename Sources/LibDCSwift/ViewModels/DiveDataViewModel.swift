@@ -16,7 +16,7 @@ public protocol DiveDataPersistence: AnyObject {
 public class DiveDataViewModel: ObservableObject {
     @Published public var dives: [DiveData] = []
     @Published public var status: String = ""
-    @Published public var progress: DownloadProgress = .idle
+    @Published public var progress: DownloadProgress = .notStarted
     @Published public var hasNewDives: Bool = false
     
     /// Key format: "fingerprint_{deviceType}_{serial}"
@@ -145,42 +145,39 @@ public class DiveDataViewModel: ObservableObject {
         )?.timestamp
     }
     
+    // Add this to your existing DownloadProgress enum if not already present
     public enum DownloadProgress: Equatable {
-        case idle
-        case inProgress(current: Int)
+        case notStarted
+        case inProgress(_ count: Int)
         case completed
-        case noNewDives
-        case error(String)
         case cancelled
+        case failed(_ message: String)
+        case noNewDives
         
         public var description: String {
             switch self {
-            case .idle:
-                return "Ready to download"
-            case .inProgress(let current):
-                return "Downloading Dive #\(current)"
-            case .completed:
-                return "Download complete"
-            case .noNewDives:
-                return "No new dives to download"
-            case .cancelled:
-                return "Download cancelled"
-            case .error(let message):
-                return "Error: \(message)"
+            case .notStarted: return "Not started"
+            case .inProgress(let count): return "Downloaded \(count) dives..."
+            case .completed: return "Download completed"
+            case .cancelled: return "Download cancelled"
+            case .failed(let error): return "Error: \(error)"
+            case .noNewDives: return "No new dives found"
             }
         }
         
         public static func == (lhs: DownloadProgress, rhs: DownloadProgress) -> Bool {
             switch (lhs, rhs) {
-            case (.idle, .idle):
+            case (.notStarted, .notStarted):
                 return true
             case (.completed, .completed):
                 return true
             case (.cancelled, .cancelled):
                 return true
-            case let (.inProgress(current1), .inProgress(current2)):
-                return current1 == current2
-            case let (.error(message1), .error(message2)):
+            case (.noNewDives, .noNewDives):
+                return true
+            case let (.inProgress(count1), .inProgress(count2)):
+                return count1 == count2
+            case let (.failed(message1), .failed(message2)):
                 return message1 == message2
             default:
                 return false
@@ -225,7 +222,7 @@ public class DiveDataViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self.dives.append(dive)
                 if case .inProgress = self.progress {
-                    self.progress = .inProgress(current: self.dives.count)
+                    self.progress = .inProgress(self.dives.count)
                 }
             }
         }
@@ -237,16 +234,22 @@ public class DiveDataViewModel: ObservableObject {
         }
     }
     
-    public func updateProgress(current: Int) {
+    public func updateProgress(_ progress: DownloadProgress) {
         DispatchQueue.main.async {
-            self.status = "Downloading Dive #\(current)"
-            self.progress = .inProgress(current: current)
+            self.progress = progress
+        }
+    }
+    
+    public func updateProgress(count: Int) {
+        DispatchQueue.main.async {
+            self.status = "Downloading Dive #\(count)"
+            self.progress = .inProgress(count)
         }
     }
     
     public func setError(_ message: String) {
         DispatchQueue.main.async {
-            self.progress = .error(message)
+            self.progress = .failed(message)
         }
     }
     
@@ -261,22 +264,47 @@ public class DiveDataViewModel: ObservableObject {
     public func setDetailedError(_ message: String, status: dc_status_t) {
         DispatchQueue.main.async {
             let statusDescription = switch status {
-            case DC_STATUS_SUCCESS: "Success"
-            case DC_STATUS_DONE: "Done"
-            case DC_STATUS_UNSUPPORTED: "Unsupported Operation"
-            case DC_STATUS_INVALIDARGS: "Invalid Arguments"
-            case DC_STATUS_NOMEMORY: "Out of Memory"
-            case DC_STATUS_NODEVICE: "No Device"
-            case DC_STATUS_NOACCESS: "No Access"
-            case DC_STATUS_IO: "Communication Error"
-            case DC_STATUS_TIMEOUT: "Timeout"
-            case DC_STATUS_PROTOCOL: "Protocol Error"
-            case DC_STATUS_DATAFORMAT: "Data Format Error"
-            case DC_STATUS_CANCELLED: "Cancelled"
-            default: "Unknown Error (\(status))"
+            case DC_STATUS_SUCCESS:
+                "Operation completed successfully"
+            case DC_STATUS_DONE:
+                "Operation completed"
+            case DC_STATUS_UNSUPPORTED:
+                "This operation is not supported by your device"
+            case DC_STATUS_INVALIDARGS:
+                "Invalid parameters were provided"
+            case DC_STATUS_NOMEMORY:
+                "Insufficient memory to complete operation"
+            case DC_STATUS_NODEVICE:
+                "Device not found or disconnected"
+            case DC_STATUS_NOACCESS:
+                "Access to device was denied"
+            case DC_STATUS_IO:
+                """
+                Connection lost. Please ensure:
+                • Device is within range
+                • Device is turned on
+                • Battery level is sufficient
+                """
+            case DC_STATUS_TIMEOUT:
+                "Device took too long to respond. Try again"
+            case DC_STATUS_PROTOCOL:
+                "Device communication error. Try turning device off and on"
+            case DC_STATUS_DATAFORMAT:
+                "Received invalid data from device"
+            case DC_STATUS_CANCELLED:
+                "Download was cancelled"
+            default:
+                "Unknown error occurred (Code: \(status))"
             }
             
-            self.progress = .error("\(message): \(statusDescription)")
+            // Only show the original message if it provides additional context
+            let errorMessage = if message == "Download incomplete" {
+                statusDescription
+            } else {
+                "\(message)\n\n\(statusDescription)"
+            }
+            
+            self.progress = .failed(errorMessage)
         }
     }
     
@@ -287,7 +315,7 @@ public class DiveDataViewModel: ObservableObject {
             }
             self.dives.append(contentsOf: newDives)
             if case .inProgress = self.progress {
-                self.progress = .inProgress(current: self.dives.count)
+                self.updateProgress(count: self.dives.count)
             }
         }
     }
@@ -318,7 +346,7 @@ public class DiveDataViewModel: ObservableObject {
     
     public func resetProgress() {
         DispatchQueue.main.async {
-            self.progress = .idle
+            self.progress = .notStarted
             self.status = ""
         }
     }

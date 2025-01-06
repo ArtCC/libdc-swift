@@ -9,7 +9,7 @@ import UIKit
 /// A class responsible for retrieving dive logs from connected dive computers.
 /// Handles the communication with the device, data parsing, and progress tracking.
 public class DiveLogRetriever {
-    private class CallbackContext {
+    public class CallbackContext {
         var logCount: Int = 1
         let viewModel: DiveDataViewModel
         var lastFingerprint: Data?
@@ -21,12 +21,27 @@ public class DiveLogRetriever {
         var devicePtr: UnsafeMutablePointer<device_data_t>?
         var hasDeviceInfo: Bool = false
         var storedFingerprint: Data?
+        var isCompleted: Bool = false
         
         init(viewModel: DiveDataViewModel, deviceName: String, storedFingerprint: Data?, bluetoothManager: CoreBluetoothManager) {
             self.viewModel = viewModel
             self.deviceName = deviceName
             self.storedFingerprint = storedFingerprint
             self.bluetoothManager = bluetoothManager
+        }
+        
+        public func cancel() {
+            isCancelled = true
+            DispatchQueue.main.async { [self] in
+                self.viewModel.setDetailedError("Download cancelled", status: DC_STATUS_CANCELLED)
+            }
+        }
+        
+        public func waitForCompletion() {
+            // Wait for the foreach operation to complete
+            while !isCompleted && !isCancelled {
+                Thread.sleep(forTimeInterval: 0.1)
+            }
         }
     }
 
@@ -96,7 +111,7 @@ public class DiveLogRetriever {
                 
                 DispatchQueue.main.async {
                     context.viewModel.appendDives([diveData])
-                    context.viewModel.updateProgress(current: context.logCount)
+                    context.viewModel.updateProgress(count: context.logCount)
                     logInfo("✅ Parsed dive #\(context.logCount - 1)")
                 }
                 
@@ -153,6 +168,20 @@ public class DiveLogRetriever {
         logInfo("❌ No stored fingerprint found for \(deviceTypeStr) (\(String(cString: serial)))")
         return nil
     }
+    
+    /// C callback for cancellation
+    private static let cancelCallback: @convention(c) (UnsafeMutableRawPointer?) -> Int32 = { userdata in
+        guard let userdata = userdata else { return 0 }
+        
+        let context = Unmanaged<CallbackContext>.fromOpaque(userdata).takeUnretainedValue()
+        if context.isCancelled || 
+           context.bluetoothManager?.isRetrievingLogs == false {
+            return 1 // Return 1 to indicate cancellation
+        }
+        return 0
+    }
+    
+    private static var currentContext: CallbackContext?
     
     /// Retrieves dive logs from a connected dive computer.
     /// - Parameters:
@@ -233,6 +262,9 @@ public class DiveLogRetriever {
             devicePtr.pointee.fingerprint_context = Unmanaged.passUnretained(viewModel).toOpaque()
             devicePtr.pointee.lookup_fingerprint = fingerprintLookup
             
+            // Set up cancellation callback
+            dc_device_set_cancel(dcDevice, cancelCallback, contextPtr)
+            
             logInfo("🔄 Starting dive enumeration...")
             let enumStatus = dc_device_foreach(dcDevice, diveCallbackClosure, contextPtr)
             
@@ -248,15 +280,15 @@ public class DiveLogRetriever {
                                 serial: deviceSerial
                             )
                             logInfo("💾 Updated fingerprint in persistent storage")
-                            viewModel.progress = .completed
+                            viewModel.updateProgress(.completed)
                             completion(true)
                         }
                     } else if context.storedFingerprint != nil {
                         logInfo("✨ No new dives found since last download")
-                        viewModel.progress = .noNewDives
+                        viewModel.updateProgress(.noNewDives)
                         completion(true)
                     } else {
-                        viewModel.progress = .completed
+                        viewModel.updateProgress(.completed)
                         completion(true)
                     }
                 } else {
@@ -265,12 +297,15 @@ public class DiveLogRetriever {
                     completion(false)
                 }
                 
+                context.isCompleted = true
                 Unmanaged<CallbackContext>.fromOpaque(contextPtr).release()
                 
                 #if os(iOS)
                 endBackgroundTask()
                 #endif
             }
+            
+            currentContext = context
         }
     }
     
@@ -282,6 +317,10 @@ public class DiveLogRetriever {
         }
     }
     #endif
+    
+    public static func getCurrentContext() -> CallbackContext? {
+        return currentContext
+    }
 }
 
 /// Extension to convert Data to hexadecimal string representation
