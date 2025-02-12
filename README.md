@@ -1,5 +1,9 @@
 # LibDC-Swift
 
+![GitHub forks](https://img.shields.io/github/forks/deepsealabs/libdc-swift?style=social)
+![GitHub stars](https://img.shields.io/github/stars/deepsealabs/libdc-swift?style=social)
+![License](https://img.shields.io/github/license/deepsealabs/libdc-swift)
+
 A Swift framework for communicating with dive computers via Bluetooth Low Energy (BLE). Built on top of [libdivecomputer](https://www.libdivecomputer.org/), this package provides a modern Swift API for iOS and macOS applications to interact with various dive computers.
 
 ## Features
