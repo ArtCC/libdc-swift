@@ -1,8 +1,8 @@
-Below is an updated version of your README that reflects how you use the dive log retriever in production (especially in SwiftUI). Feel free to adjust the code snippet and wording to match your project’s conventions.
-
----
-
 # LibDC-Swift
+
+![GitHub forks](https://img.shields.io/github/forks/deepsealabs/libdc-swift?style=social)
+![GitHub stars](https://img.shields.io/github/stars/deepsealabs/libdc-swift?style=social)
+![License](https://img.shields.io/github/license/deepsealabs/libdc-swift)
 
 A Swift framework for communicating with dive computers via Bluetooth Low Energy (BLE). Built on top of [libdivecomputer](https://www.libdivecomputer.org/), this package provides a modern Swift API for iOS and macOS applications to interact with various dive computers.
 
@@ -13,7 +13,7 @@ A Swift framework for communicating with dive computers via Bluetooth Low Energy
 - 📥 **Efficient Dive Log Retrieval:** Retrieve dive logs using a fingerprint system to avoid re-downloading previously fetched dives.
 - 📊 **Comprehensive Data Parsing:** Parse raw dive data and transform it into usable models.
 - 🛠 **Robust Error Handling and Logging:** Built-in mechanisms for tracking and reporting errors.
-- ⏱ **Progress Tracking & Background Support:** Integrated progress updates, background execution, and even Live Activity integration for iOS.
+- ⏱ **Progress Tracking & Background Support:** Integrated progress updates, and background execution for iOS.
 - 🔄 **Seamless SwiftUI Integration:** Designed to work naturally with SwiftUI for real-time UI updates.
 
 ## Requirements
@@ -28,7 +28,7 @@ Add LibDC-Swift to your project using Swift Package Manager:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/latishab/libdc-swift", from: "1.0.0")
+    .package(url: "https://github.com/deepsealabs/libdc-swift", from: "1.3.0")
 ]
 ```
 
@@ -74,7 +74,6 @@ struct ConnectedDeviceView: View {
             viewModel: diveViewModel,
             bluetoothManager: bluetoothManager,
             onProgress: { current, total in
-                // Throttle and update progress (e.g., update a progress bar or Live Activity)
                 DispatchQueue.main.async {
                     diveViewModel.updateProgress(count: current + 1)
                 }
@@ -108,27 +107,21 @@ The framework is built around two core classes:
   Handles the retrieval of dive logs from a connected dive computer. It leverages:
   - A C-compatible callback mechanism to process individual dive logs.
   - Progress updates (which can be used to update the UI in real time).
-  - Integration with background tasks and Live Activities (on iOS) to keep the download process alive even when the app is in the background.
-
-For example, your production code in `ConnectedDeviceView.swift` demonstrates:
-- Checking and displaying device info.
-- Initiating a dive log download upon user action.
-- Updating the UI with progress and handling errors.
-- Integrating with background execution and Live Activity updates for a smoother user experience.
+  - Integration with background tasks to keep the download process alive even when the app is in the background.
 
 ## Supported Devices
 
 LibDC-Swift supports all dive computer brands with BLE connectivity as defined by [libdivecomputer](https://www.libdivecomputer.org/). Some supported families include:
 
 - Suunto EON Steel/Core
-- Shearwater Perdix/Teric
+- Shearwater Perdix/Tern
 - Mares Icon HD
 - Pelagic i330R/DSX
 - ...and more (see code documentation for the complete list)
 
 ## Documentation
 
-For complete documentation, advanced usage examples, and further integration details, please visit our [Wiki](wiki-link). Topics include:
+For complete documentation, advanced usage examples, and further integration details, please visit our [Wiki](https://github.com/deepsealabs/libdc-swift/wiki). Topics include:
 
 - Detailed setup and configuration
 - Advanced usage scenarios and error handling
