@@ -248,9 +248,9 @@ public class CoreBluetoothManager: NSObject, CoreBluetoothManagerProtocol, Obser
         }
     }
     
-    public func startScanning(filterUnsupportedPeripherials: Bool = true) {
+    public func startScanning(omitUnsupportedPeripherals: Bool = true) {
         centralManager.scanForPeripherals(
-            withServices: filterUnsupportedPeripherials ? knownSerialServices.map { CBUUID(string: $0.uuid) } : nil,
+            withServices: omitUnsupportedPeripherals ? knownSerialServices.map { CBUUID(string: $0.uuid) } : nil,
             options: nil)
         isScanning = true
     }
