@@ -501,7 +501,7 @@ mares_genius_cache (mares_iconhd_parser_t *parser)
 	unsigned int type = array_uint16_le (data);
 	unsigned int minor = data[2];
 	unsigned int major = data[3];
-	if (type != 1 || OBJVERSION(major,minor) > OBJVERSION(1,1)) {
+	if (type != 1 || OBJVERSION(major,minor) > OBJVERSION(2,0)) {
 		ERROR (abstract->context, "Unsupported object type (%u) or version (%u.%u).",
 			type, major, minor);
 		return DC_STATUS_DATAFORMAT;
@@ -520,7 +520,7 @@ mares_genius_cache (mares_iconhd_parser_t *parser)
 
 	// The Genius header (v1.x) has 10 bytes more at the end.
 	unsigned int more = 0;
-	if (major == 1) {
+	if (major >= 1) {
 		more = 16;
 	}
 
@@ -1053,7 +1053,7 @@ mares_genius_foreach (dc_parser_t *abstract, dc_sample_callback_t callback, void
 	unsigned int profile_minor = data[offset + 2];
 	unsigned int profile_major = data[offset + 3];
 	if (profile_type > 1 ||
-		(profile_type == 0 && OBJVERSION(profile_major,profile_minor) > OBJVERSION(1,0)) ||
+		(profile_type == 0 && OBJVERSION(profile_major,profile_minor) > OBJVERSION(2,0)) ||
 		(profile_type == 1 && OBJVERSION(profile_major,profile_minor) > OBJVERSION(0,2))) {
 		ERROR (abstract->context, "Unsupported object type (%u) or version (%u.%u).",
 			profile_type, profile_major, profile_minor);
