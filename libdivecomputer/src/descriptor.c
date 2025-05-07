@@ -29,9 +29,7 @@
 
 #include "iterator-private.h"
 #include "platform.h"
-
-#define C_ARRAY_SIZE(array) (sizeof (array) / sizeof *(array))
-#define C_ARRAY_ITEMSIZE(array) (sizeof *(array))
+#include "array.h"
 
 #define DC_FILTER_INTERNAL(key, values, isnullterminated, match) \
 	dc_filter_internal( \
@@ -40,6 +38,10 @@
 		C_ARRAY_SIZE(values) - isnullterminated, \
 		C_ARRAY_ITEMSIZE(values), \
 		match)
+
+#undef dc_descriptor_iterator
+
+dc_status_t dc_descriptor_iterator (dc_iterator_t **out);
 
 typedef int (*dc_match_t)(const void *, const void *);
 
@@ -330,7 +332,7 @@ static const dc_descriptor_t g_descriptors[] = {
 	{"Heinrichs Weikamp", "OSTC Plus",  DC_FAMILY_HW_OSTC3, 0x13, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw},
 	{"Heinrichs Weikamp", "OSTC Plus",  DC_FAMILY_HW_OSTC3, 0x1A, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw},
 	{"Heinrichs Weikamp", "OSTC 4",     DC_FAMILY_HW_OSTC3, 0x3B, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw},
-	{"Heinrichs Weikamp", "OSTC 5",     DC_FAMILY_HW_OSTC3, 0x3B, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw}
+	{"Heinrichs Weikamp", "OSTC 5",     DC_FAMILY_HW_OSTC3, 0x3B, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw},
 	{"Heinrichs Weikamp", "OSTC cR",    DC_FAMILY_HW_OSTC3, 0x05, DC_TRANSPORT_SERIAL, NULL},
 	{"Heinrichs Weikamp", "OSTC cR",    DC_FAMILY_HW_OSTC3, 0x07, DC_TRANSPORT_SERIAL, NULL},
 	{"Heinrichs Weikamp", "OSTC Sport", DC_FAMILY_HW_OSTC3, 0x12, DC_TRANSPORT_SERIAL | DC_TRANSPORT_BLUETOOTH | DC_TRANSPORT_BLE, dc_filter_hw},
@@ -694,7 +696,7 @@ dc_filter_hw (const dc_descriptor_t *descriptor, dc_transport_t transport, const
 
 	if (transport == DC_TRANSPORT_BLUETOOTH || transport == DC_TRANSPORT_BLE) {
 		return DC_FILTER_INTERNAL (userdata, bluetooth, 0, dc_match_prefix);
-	} 
+	}
 
 	return 1;
 }
@@ -718,7 +720,7 @@ dc_filter_shearwater (const dc_descriptor_t *descriptor, dc_transport_t transpor
 
 	if (transport == DC_TRANSPORT_BLUETOOTH || transport == DC_TRANSPORT_BLE) {
 		return DC_FILTER_INTERNAL (userdata, bluetooth, 0, dc_match_name);
-	} 
+	}
 
 	return 1;
 }
@@ -732,7 +734,7 @@ dc_filter_tecdiving (const dc_descriptor_t *descriptor, dc_transport_t transport
 
 	if (transport == DC_TRANSPORT_BLUETOOTH) {
 		return DC_FILTER_INTERNAL (userdata, bluetooth, 0, dc_match_name);
-	} 
+	}
 
 	return 1;
 }
@@ -812,7 +814,7 @@ dc_filter_mclean(const dc_descriptor_t *descriptor, dc_transport_t transport, co
 
 	if (transport == DC_TRANSPORT_BLUETOOTH || transport == DC_TRANSPORT_BLE) {
 		return DC_FILTER_INTERNAL (userdata, bluetooth, 0, dc_match_name);
-	} 
+	}
 
 	return 1;
 }
@@ -927,7 +929,7 @@ dc_filter_halcyon (const dc_descriptor_t *descriptor, dc_transport_t transport, 
 }
 
 dc_status_t
-dc_descriptor_iterator (dc_iterator_t **out)
+dc_descriptor_iterator_new (dc_iterator_t **out, dc_context_t *context)
 {
 	dc_descriptor_iterator_t *iterator = NULL;
 
@@ -943,6 +945,12 @@ dc_descriptor_iterator (dc_iterator_t **out)
 	*out = (dc_iterator_t *) iterator;
 
 	return DC_STATUS_SUCCESS;
+}
+
+dc_status_t
+dc_descriptor_iterator (dc_iterator_t **out)
+{
+	return dc_descriptor_iterator_new (out, NULL);
 }
 
 static dc_status_t
